@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>우리 반 글쓰기 - Spotify Edition</title>
+<!-- Google Fonts: Inter and Noto Sans KR -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  /* Spotify Colors */
+  --spotify-green: #1ed760;
+  --spotify-green-hover: #1fdf64;
+  --bg-base: #121212;
+  --bg-surface: #181818;
+  --bg-card: #252525;
+  --bg-interactive: #1f1f1f;
+  --bg-interactive-hover: #2a2a2a;
+  --text-base: #ffffff;
+  --text-muted: #b3b3b3;
+  --text-highlight: #fdfdfd;
+  --border-gray: #4d4d4d;
+  --border-light: #7c7c7c;
+  
+  /* Semantic Colors */
+  --color-error: #f3727f;
+  --color-warning: #ffa42b;
+  --color-success: #1ed760;
+  --color-info: #539df5;
+  
+  /* Shadows */
+  --shadow-heavy: rgba(0, 0, 0, 0.7) 0px 8px 24px;
+  --shadow-medium: rgba(0, 0, 0, 0.5) 0px 4px 12px;
+  
+  --radius-std: 8px;
+  --radius-pill: 500px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', 'Noto Sans KR', sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-base);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #88;
+}
+
+/* Header */
+.app-header {
+  background-color: #000000;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  border-bottom: 1px solid var(--bg-interactive);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.app-logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--spotify-green);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  letter-spacing: -0.5px;
+}
+
+.app-logo svg {
+  fill: currentColor;
+  width: 24px;
+  height: 24px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-badge {
+  background-color: var(--bg-interactive);
+  color: var(--text-base);
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.btn-logout {
+  background: none;
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  border-color: var(--text-base);
+  color: var(--text-base);
+}
+
+/* Container Layout */
+.main-container {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background-color: #000000;
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-right: 1px solid var(--bg-interactive);
+}
+
+@media(max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+}
+
+.nav-menu {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-item a {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 16px;
+  border-radius: 4px;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.nav-item.active a, .nav-item a:hover {
+  color: var(--text-base);
+  background-color: var(--bg-interactive);
+}
+
+.nav-item.active a {
+  border-left: 4px solid var(--spotify-green);
+  border-radius: 0 4px 4px 0;
+  padding-left: 12px;
+}
+
+/* Pages */
+.page {
+  display: none;
+  flex: 1;
+  padding: 32px 24px 100px; /* Space for the bottom player */
+  overflow-y: auto;
+}
+
+.page.active {
+  display: block;
+  animation: fadeIn 0.4s ease;
+}
+
+#page-login.active, #page-parent-login.active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px);
+  padding: 20px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Card login */
+.login-card {
+  background-color: var(--bg-surface);
+  border-radius: 12px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-heavy);
+  text-align: center;
+}
+
+.login-logo {
+  color: var(--spotify-green);
+  margin-bottom: 24px;
+}
+
+.login-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+
+.login-sub {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 32px;
+}
+
+/* Inputs and Forms */
+.form-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.form-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.form-control {
+  width: 100%;
+  padding: 14px 20px;
+  background-color: var(--bg-interactive);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  color: var(--text-base);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.form-control:focus {
+  border-color: var(--border-light);
+  background-color: var(--bg-interactive-hover);
+}
+
+textarea.form-control {
+  border-radius: 8px;
+  resize: vertical;
+}
+
+/* Buttons */
+.btn-primary-pill {
+  width: 100%;
+  padding: 14px;
+  background-color: var(--spotify-green);
+  color: #000000;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  transition: transform 0.1s, background-color 0.2s;
+}
+
+.btn-primary-pill:hover {
+  background-color: var(--spotify-green-hover);
+  transform: scale(1.02);
+}
+
+.btn-primary-pill:active {
+  transform: scale(0.98);
+}
+
+.btn-spotify {
+  background-color: var(--spotify-green);
+  color: #000000;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 10px 24px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.1s, background-color 0.2s;
+}
+
+.btn-spotify:hover {
+  background-color: var(--spotify-green-hover);
+  transform: scale(1.04);
+}
+
+.btn-spotify-secondary {
+  background-color: var(--bg-interactive);
+  border: 1px solid var(--border-light);
+  color: var(--text-base);
+  border-radius: var(--radius-pill);
+  padding: 9px 24px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-spotify-secondary:hover {
+  border-color: var(--text-base);
+  background-color: var(--bg-interactive-hover);
+}
+
+.btn-spotify-danger {
+  background-color: transparent;
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+  border-radius: var(--radius-pill);
+  padding: 9px 24px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-spotify-danger:hover {
+  background-color: rgba(243, 114, 127, 0.1);
+}
+
+/* Layout / Grid */
+.content-wrap {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  letter-spacing: -0.5px;
+}
+
+.card {
+  background-color: var(--bg-surface);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-medium);
+}
+
+.card-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.card-title-text {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Topic Card */
+.topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.spotify-topic-card {
+  background-color: var(--bg-interactive);
+  border-radius: 8px;
+  padding: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent;
+}
+
+.spotify-topic-card:hover {
+  background-color: var(--bg-interactive-hover);
+  transform: translateY(-4px);
+}
+
+.spotify-topic-card.selected {
+  border-color: var(--spotify-green);
+  background-color: var(--bg-interactive-hover);
+}
+
+.topic-badge-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.topic-index {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--spotify-green);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.topic-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.topic-guide {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.topic-footer {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-draft { background-color: #3e3e3e; color: var(--text-muted); }
+.badge-submitted { background-color: rgba(83, 157, 245, 0.2); color: var(--color-info); }
+.badge-done { background-color: rgba(30, 215, 96, 0.2); color: var(--spotify-green); }
+.badge-revise { background-color: rgba(255, 164, 43, 0.2); color: var(--color-warning); }
+.badge-none { background-color: rgba(255,255,255,0.05); color: var(--text-muted); }
+
+/* Writing Work List */
+.work-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.work-row {
+  background-color: var(--bg-interactive);
+  border-radius: 6px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.work-row:hover {
+  background-color: var(--bg-interactive-hover);
+}
+
+.work-info-part {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.work-title-h {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-base);
+}
+
+.work-subtitle-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Editor View */
+.back-row {
+  margin-bottom: 24px;
+}
+
+.btn-back {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-back:hover {
+  color: var(--text-base);
+}
+
+.banner-spotify-green {
+  background: linear-gradient(135deg, #1f1f1f 0%, #121212 100%);
+  border-left: 6px solid var(--spotify-green);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-medium);
+}
+
+.banner-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.banner-guide {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+/* Editor textareas styling */
+.editor-card {
+  background-color: var(--bg-surface);
+  border-radius: 8px;
+  padding: 32px;
+  box-shadow: var(--shadow-medium);
+}
+
+.editor-title-field {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-gray);
+  color: var(--text-base);
+  font-size: 24px;
+  font-weight: 700;
+  width: 100%;
+  padding-bottom: 12px;
+  margin-bottom: 24px;
+  outline: none;
+}
+
+.editor-title-field:focus {
+  border-bottom-color: var(--text-base);
+}
+
+.editor-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.toolbar-btn {
+  background-color: var(--bg-interactive);
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.toolbar-btn:hover, .toolbar-btn.active {
+  color: var(--text-base);
+  background-color: var(--bg-interactive-hover);
+}
+
+.toolbar-btn.active {
+  border-color: var(--spotify-green);
+}
+
+.editor-body-field {
+  width: 100%;
+  min-height: 360px;
+  background-color: var(--bg-interactive);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 24px;
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text-base);
+  outline: none;
+  overflow-y: auto;
+  word-break: break-all;
+  cursor: text;
+}
+
+.editor-body-field:focus {
+  border-color: var(--border-light);
+}
+
+.editor-body-field p {
+  margin-bottom: 1em;
+}
+
+.editor-body-field p:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.editor-footer-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+
+.editor-action-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.editor-image {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 12px 0;
+  display: block;
+}
+
+/* AI Panels */
+.ai-panel {
+  background-color: var(--bg-interactive);
+  border: 1px solid var(--border-gray);
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 24px;
+  display: none;
+}
+
+.ai-panel.open {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+.ai-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--spotify-green);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-box {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-gray);
+  border-radius: 6px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.spell-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spell-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-gray);
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.spell-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spell-bad {
+  color: var(--color-error);
+  text-decoration: line-through;
+  font-weight: 700;
+}
+
+.spell-good {
+  color: var(--spotify-green);
+  font-weight: 700;
+}
+
+.spell-explain {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Now Playing Footer Bar */
+.now-playing-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 90px;
+  background-color: #181818;
+  border-top: 1px solid #282828;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 200;
+}
+
+.np-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 30%;
+  min-width: 180px;
+}
+
+.np-album-art {
+  width: 56px;
+  height: 56px;
+  background-color: #282828;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: var(--shadow-medium);
+  flex-shrink: 0;
+}
+
+.np-track-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.np-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-artist {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-center {
+  width: 40%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.np-controls {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.np-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.np-btn:hover {
+  color: var(--text-base);
+}
+
+.np-btn-play {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--text-base);
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: transform 0.1s;
+}
+
+.np-btn-play:hover {
+  transform: scale(1.06);
+}
+
+.np-progress-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.np-progress-bar-bg {
+  flex: 1;
+  height: 4px;
+  background-color: #535353;
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.np-progress-bar-fill {
+  height: 100%;
+  background-color: var(--text-muted);
+  width: 0%;
+  border-radius: 2px;
+  transition: width 0.1s;
+}
+
+.np-progress-bar-bg:hover .np-progress-bar-fill {
+  background-color: var(--spotify-green);
+}
+
+.np-right {
+  width: 30%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.np-volume-icon {
+  font-size: 16px;
+  color: var(--text-muted);
+}
+
+/* Modals */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0,0,0,0.8);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal {
+  background-color: var(--bg-surface);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-heavy);
+  border: 1px solid var(--bg-interactive);
+}
+
+.modal-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--bg-interactive);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  color: var(--text-base);
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-footer {
+  padding: 24px;
+  border-top: 1px solid var(--bg-interactive);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Teacher Grid view */
+.student-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.student-card {
+  background-color: var(--bg-interactive);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.student-card:hover {
+  background-color: var(--bg-interactive-hover);
+  transform: translateY(-4px);
+}
+
+.student-card.submitted { border-color: var(--color-info); }
+.student-card.done { border-color: var(--spotify-green); }
+.student-card.revise { border-color: var(--color-warning); }
+
+.student-avatar {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.student-name-text {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* Stats */
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat-item {
+  background-color: var(--bg-interactive);
+  padding: 16px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.stat-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Toast Notification */
+.toast-msg {
+  position: fixed;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background-color: var(--color-info);
+  color: #000;
+  padding: 14px 28px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 700;
+  z-index: 999;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: var(--shadow-heavy);
+}
+
+.toast-msg.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast-msg.success { background-color: var(--spotify-green); color: #000; }
+.toast-msg.error { background-color: var(--color-error); color: #fff; }
+
+/* Spelling / Feedback boxes */
+.box-warning {
+  background-color: rgba(255, 164, 43, 0.1);
+  border: 1px solid var(--color-warning);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.box-warning-title {
+  color: var(--color-warning);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+/* Star selection inside modal */
+.modal-stars {
+  display: flex;
+  gap: 8px;
+  font-size: 28px;
+  margin: 12px 0;
+}
+
+.star-interactive {
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color 0.1s;
+}
+
+.star-interactive.active {
+  color: var(--color-warning);
+}
+
+/* Loading */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0,0,0,0.8);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--bg-interactive);
+  border-top-color: var(--spotify-green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+</head>
+<body>
+
+<!-- Loading Spinner Overlay -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-weight: 700; font-size: 15px;">서버 연결 중...</div>
+</div>
+
+<!-- Toast Alert -->
+<div id="toast" class="toast-msg"></div>
+
+<!-- Header -->
+<header class="app-header" id="app-header" style="display: none;">
+  <a href="#" class="app-logo" onclick="backToMain()">
+    <!-- Spotify-like Logo icon -->
+    <svg viewBox="0 0 24 24">
+      <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.565.387-.86.207-2.377-1.454-5.37-1.783-8.894-.982-.336.076-.67-.135-.747-.472-.077-.336.136-.67.472-.747 3.854-.88 7.15-.506 9.822 1.13.295.18.387.563.207.865zm1.224-2.723c-.226.367-.707.487-1.074.26-2.72-1.672-6.87-2.157-10.075-1.185-.413.125-.847-.107-.972-.52-.125-.413.107-.847.52-.972 3.667-1.112 8.237-.57 11.34 1.34.368.225.488.706.26 1.076zm.106-2.833C14.39 8.877 8.588 8.685 5.223 9.707c-.515.156-1.05-.133-1.206-.648-.156-.515.133-1.05.648-1.206 3.86-1.17 10.274-.95 14.32 1.455.464.275.614.873.34 1.337-.275.464-.874.615-1.34.34z"/>
+    </svg>
+    <span>우리 반 글쓰기</span>
+  </a>
+  <div class="header-right">
+    <div class="user-badge" id="header-user"></div>
+    <button class="btn-logout" id="logout-btn">로그아웃</button>
+  </div>
+</header>
+
+<div class="main-container">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="app-sidebar" style="display: none;">
+    <ul class="nav-menu">
+      <!-- For Student -->
+      <li class="nav-item active student-nav" id="snav-main">
+        <a href="#" onclick="backToTopicList()">
+          <span style="font-size: 18px;">🏠</span>
+          <span>홈 / 주제선택</span>
+        </a>
+      </li>
+      <li class="nav-item student-nav" id="snav-history">
+        <a href="#" onclick="focusMyWorksList()">
+          <span style="font-size: 18px;">📚</span>
+          <span>내 글 보관함</span>
+        </a>
+      </li>
+      
+      <!-- For Teacher -->
+      <li class="nav-item active teacher-nav" id="tnav-overview" style="display: none;">
+        <a href="#" onclick="switchTeacherTab('overview')">
+          <span style="font-size: 18px;">👥</span>
+          <span>제출 관리</span>
+        </a>
+      </li>
+      <li class="nav-item teacher-nav" id="tnav-topics" style="display: none;">
+        <a href="#" onclick="switchTeacherTab('topics')">
+          <span style="font-size: 18px;">📌</span>
+          <span>주제 편집</span>
+        </a>
+      </li>
+      <li class="nav-item teacher-nav" id="tnav-settings" style="display: none;">
+        <a href="#" onclick="switchTeacherTab('settings')">
+          <span style="font-size: 18px;">⚙️</span>
+          <span>설정 & 백업</span>
+        </a>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Pages Content Area -->
+  
+  <!-- 1. LOGIN PAGE -->
+  <div id="page-login" class="page active">
+    <div class="login-card">
+      <div class="login-logo">
+        <svg viewBox="0 0 24 24" width="60" height="60" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.565.387-.86.207-2.377-1.454-5.37-1.783-8.894-.982-.336.076-.67-.135-.747-.472-.077-.336.136-.67.472-.747 3.854-.88 7.15-.506 9.822 1.13.295.18.387.563.207.865zm1.224-2.723c-.226.367-.707.487-1.074.26-2.72-1.672-6.87-2.157-10.075-1.185-.413.125-.847-.107-.972-.52-.125-.413.107-.847.52-.972 3.667-1.112 8.237-.57 11.34 1.34.368.225.488.706.26 1.076zm.106-2.833C14.39 8.877 8.588 8.685 5.223 9.707c-.515.156-1.05-.133-1.206-.648-.156-.515.133-1.05.648-1.206 3.86-1.17 10.274-.95 14.32 1.455.464.275.614.873.34 1.337-.275.464-.874.615-1.34.34z"/>
+        </svg>
+      </div>
+      <h1 class="login-title">우리 반 글쓰기</h1>
+      <p class="login-sub">구글 계정으로 로그인하여 글을 시작하세요!</p>
+      
+      <!-- Supabase Auth Login trigger -->
+      <button class="btn-primary-pill" id="login-btn" style="margin-bottom: 20px;">구글 계정으로 로그인</button>
+
+      <!-- Local storage fallback login input (hidden by default unless local fallback) -->
+      <div class="form-group" style="display:none;" id="local-login-group">
+        <input type="text" id="student-name-input" class="form-control" placeholder="로컬 모드 이름 입력"/>
+      </div>
+
+      <div style="margin-top: 24px; font-size: 13px;">
+        <a href="#" style="color: var(--text-muted); text-decoration: underline;" onclick="goToParentLogin()">학부모이신가요?</a>
+        <span style="color: var(--text-muted); margin: 0 8px;">|</span>
+        <a href="#" style="color: var(--text-muted); text-decoration: underline;" onclick="goToTeacherLogin()">선생님이신가요?</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. STUDENT MAIN PAGE -->
+  <div id="page-student" class="page">
+    <div class="content-wrap">
+      
+      <!-- Sub view: Topic List selection -->
+      <div id="view-topic-list">
+        <h2 class="section-title">📌 오늘 나의 주제는 무엇인가요?</h2>
+        <div class="topic-grid" id="student-topic-list">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <div class="card" id="my-works-container">
+          <div class="card-header-bar">
+            <h3 class="card-title-text">📚 내 글 보관함</h3>
+            <button class="btn-spotify-secondary" style="padding: 4px 12px; font-size: 11px;" id="refresh-works-btn">🔄 새로고침</button>
+          </div>
+          <div class="work-list" id="my-works-list">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub view: Writer Editor -->
+      <div id="view-editor" style="display: none;">
+        <div class="back-row">
+          <button class="btn-back" onclick="backToTopicList()">← 주제 목록으로 돌아가기</button>
+        </div>
+
+        <div class="banner-spotify-green">
+          <div class="topic-index" id="selected-topic-num">TOPIC</div>
+          <div class="banner-title" id="selected-topic-title">-</div>
+          <div class="banner-guide" id="selected-topic-guide"></div>
+        </div>
+
+        <!-- Teacher feedback notification if exists -->
+        <div id="student-feedback-box" class="box-warning" style="display: none;">
+          <div class="box-warning-title">📝 선생님의 피드백</div>
+          <div style="font-size: 14px; line-height: 1.6;" id="student-feedback-text"></div>
+        </div>
+
+        <!-- Top works of friends -->
+        <div id="top-works-wrap" class="card" style="display: none; background-color: #121212; border: 1px solid var(--bg-interactive);">
+          <div class="card-header-bar">
+            <h3 class="card-title-text">⭐ 친구들이 쓴 우수작 둘러보기</h3>
+          </div>
+          <div class="work-list" id="top-works-list" style="margin-top: 10px;">
+            <!-- Friends list -->
+          </div>
+        </div>
+
+        <div class="editor-card">
+          <div class="card-header-bar">
+            <div class="card-title-text" id="editor-status-badge"></div>
+          </div>
+          
+          <input type="text" id="editor-title" class="editor-title-field" placeholder="글의 제목을 입력하세요" maxlength="60"/>
+          
+          <div class="editor-toolbar">
+            <button class="toolbar-btn active" id="align-left" title="왼쪽 정렬">L</button>
+            <button class="toolbar-btn" id="align-center" title="가운데 정렬">C</button>
+            <button class="toolbar-btn" id="align-right" title="오른쪽 정렬">R</button>
+            <span style="color: var(--border-light); margin: 0 4px;">|</span>
+            <button class="toolbar-btn" id="photo-btn" title="사진 삽입">📷</button>
+            <input type="file" id="photo-file-input" accept="image/*" multiple style="display:none;"/>
+          </div>
+
+          <div id="editor-content" class="editor-body-field" contenteditable="true" data-placeholder="여기에 글을 써보세요. 생각과 느낌을 가득 담아 자유롭게 써보세요."></div>
+          
+          <div class="editor-footer-info">
+            <span id="char-count">0자</span>
+            <span id="auto-save-time" style="color: var(--spotify-green);">자동 저장 기능 작동 중</span>
+          </div>
+
+          <div class="editor-action-row">
+            <button class="btn-spotify-secondary" id="save-draft-btn">💾 임시저장</button>
+            <button class="btn-spotify" id="submit-work-btn">📤 제출하기</button>
+            <button class="btn-spotify-secondary" onclick="window.runSpellCheck()">📝 맞춤법 검사</button>
+            <button class="btn-spotify-secondary" onclick="window.runRefine()">✨ 글 다듬기 (AI)</button>
+          </div>
+
+          <!-- Spell Check Results -->
+          <div class="ai-panel" id="spell-panel">
+            <div class="ai-panel-title">✏️ 맞춤법 및 띄어쓰기 제안</div>
+            <div id="spell-results" class="spell-list"></div>
+          </div>
+
+          <!-- Refine Results -->
+          <div class="ai-panel" id="refine-panel">
+            <div class="ai-panel-title">✨ AI 선생님의 글 다듬기 제안</div>
+            <div id="refine-content" class="ai-box"></div>
+            <div style="margin-top: 14px; display: flex; gap: 8px;">
+              <button class="btn-spotify" onclick="window.applyRefined()">제안 적용하기</button>
+              <button class="btn-spotify-secondary" onclick="window.closeRefine()">닫기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. TEACHER DASHBOARD -->
+  <div id="page-teacher" class="page">
+    <div class="content-wrap">
+      
+      <!-- SUB VIEW: TEACHER OVERVIEW -->
+      <div id="teacher-tab-overview">
+        <h2 class="section-title">👩‍🏫 학생들의 글쓰기 제출 현황</h2>
+        
+        <div class="card">
+          <div class="form-group">
+            <label class="form-label">주제 선택</label>
+            <select id="teacher-topic-select-dropdown" class="form-control" style="border-radius: 8px;" onchange="window.onTeacherSelectTopic(this.value)">
+              <!-- Dynamic -->
+            </select>
+          </div>
+        </div>
+
+        <div id="teacher-overview-content" style="display: none;">
+          <div class="stats-container" id="teacher-stats">
+            <!-- Dynamic stats -->
+          </div>
+
+          <div class="card">
+            <div class="card-header-bar">
+              <h3 class="card-title-text" id="overview-title">학생별 진행 사항</h3>
+              <button class="btn-spotify-secondary" onclick="window.reloadSubmissions()">🔄 새로고침</button>
+            </div>
+            <div class="student-grid" id="teacher-student-grid">
+              <!-- Dynamic students -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB VIEW: TOPIC MANAGEMENT -->
+      <div id="teacher-tab-topics" style="display: none;">
+        <h2 class="section-title">📌 글쓰기 주제 관리</h2>
+        
+        <div class="card">
+          <h3 class="card-title-text" style="margin-bottom: 16px;">➕ 새 주제 추가</h3>
+          <div class="form-group">
+            <label class="form-label">주제 제목</label>
+            <input type="text" id="new-topic-title" class="form-control" style="border-radius: 8px;" placeholder="예) 나의 가장 특별한 일주일"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">주제 안내 및 조건</label>
+            <textarea id="new-topic-guide" class="form-control" rows="3" placeholder="예) 일주일 중 가장 행복했던 일을 구체적으로 서술해보세요."></textarea>
+          </div>
+          <button class="btn-spotify" onclick="window.addTopic()">주제 등록</button>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title-text" style="margin-bottom: 16px;">📋 현재 등록된 주제 목록</h3>
+          <div id="topic-manage-list" class="work-list">
+            <!-- Dynamic -->
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB VIEW: SETTINGS & BACKUP -->
+      <div id="teacher-tab-settings" style="display: none;">
+        <h2 class="section-title">⚙️ 시스템 설정 및 관리</h2>
+        
+        <div class="card">
+          <h3 class="card-title-text" style="margin-bottom: 16px;">🔑 AI 서비스 설정 (OpenAI API)</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+            글 다듬기 및 맞춤법 기능에 사용될 OpenAI API Key를 설정합니다. 설정 정보는 사용 중인 브라우저(localStorage)에 안전하게 저장됩니다.
+          </p>
+          <div class="form-group">
+            <label class="form-label">OpenAI API Key</label>
+            <input type="password" id="setting-openai-key" class="form-control" style="border-radius: 8px;" placeholder="sk-..."/>
+          </div>
+          <button class="btn-spotify" onclick="window.saveSettings()">설정 저장</button>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title-text" style="margin-bottom: 16px;">👥 학생 목록 설정</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+            학생 이메일, 이름, 부모인증코드를 쉼표로 구분하여 한 줄에 한 명씩 입력하세요. (예: student@gmail.com, 마준희, 1111)
+          </p>
+          <div class="form-group">
+            <textarea id="setting-student-list" class="form-control" rows="8" placeholder="student1@gmail.com, 마준희, 1111&#10;student2@gmail.com, 박태준, 2222"></textarea>
+          </div>
+          <button class="btn-spotify" onclick="window.saveStudentsConfig()">학생 목록 업데이트</button>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title-text" style="margin-bottom: 16px;">👩‍🏫 교사 구글 계정 등록</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">교사 대시보드 접근 권한을 부여할 구글 계정 이메일을 작성하세요.</p>
+          <div class="form-group">
+            <input type="text" id="setting-auth-list" class="form-control" style="border-radius: 8px;" placeholder="teacher@gmail.com"/>
+          </div>
+          <button class="btn-spotify" onclick="window.saveAuthConfig()">이메일 설정</button>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title-text" style="margin-bottom: 16px;">💾 전체 데이터 백업 및 복구</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+            작성한 글 데이터 손실을 방지하기 위해 정기적으로 백업 파일을 보관하는 것을 추천합니다.
+          </p>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button class="btn-spotify-secondary" onclick="window.exportDataJSON()">📤 JSON 백업 다운로드</button>
+            <button class="btn-spotify-secondary" onclick="window.exportDataCSV()">📊 CSV 형식 내보내기</button>
+            <button class="btn-spotify-secondary" onclick="document.getElementById('import-file-input').click()">📥 데이터 복구 (JSON)</button>
+            <input type="file" id="import-file-input" accept=".json" style="display: none;" onchange="window.importDataJSON(this)"/>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. PARENT LOGIN PAGE -->
+  <div id="page-parent-login" class="page">
+    <div class="login-card">
+      <span style="font-size: 48px; display: block; margin-bottom: 16px;">📖</span>
+      <h1 class="login-title">우리 아이 글 보기</h1>
+      <p class="login-sub">아이의 이름과 설정된 인증번호를 입력하세요.</p>
+      <div class="form-group">
+        <label class="form-label">학생 이름</label>
+        <input type="text" id="parent-name-input" class="form-control" placeholder="예) 마준희"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">인증번호</label>
+        <input type="password" id="parent-code-input" class="form-control" placeholder="네 자리 인증번호" maxlength="8"/>
+      </div>
+      <button class="btn-primary-pill" onclick="window.loginParent()">글 확인하기</button>
+      <div style="margin-top: 24px;">
+        <a href="#" style="color: var(--text-muted); text-decoration: underline; font-size: 13px;" onclick="goToMainLogin()">학생 로그인으로 가기</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. PARENT VIEWER PAGE -->
+  <div id="page-parent" class="page">
+    <div class="content-wrap">
+      <div class="banner-spotify-green">
+        <span style="font-size: 32px; display: block; margin-bottom: 10px;">📖</span>
+        <div class="banner-title" id="parent-student-title">우리아이 글 목록</div>
+        <div style="font-size: 14px; color: var(--text-muted); margin-top: 4px;">제출했거나 첨삭이 완료된 소중한 글을 한눈에 감상할 수 있습니다.</div>
+      </div>
+      
+      <div id="parent-works-list" class="work-list">
+        <!-- Dynamic list -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Music Player style controls -->
+<div class="now-playing-bar" id="now-playing-panel" style="display: none;">
+  <div class="np-left">
+    <div class="np-album-art">✏️</div>
+    <div class="np-track-details">
+      <span class="np-title" id="np-topic-title">작성 중인 주제 없음</span>
+      <span class="np-artist" id="np-student-name">로그인 대기 중</span>
+    </div>
+  </div>
+  <div class="np-center">
+    <div class="np-controls">
+      <button class="np-btn" onclick="window.runSpellCheck()" title="맞춤법 검사">🔍</button>
+      <button class="np-btn-play" id="np-save-btn" onclick="document.getElementById('save-draft-btn').click()" title="수동 임시저장">💾</button>
+      <button class="np-btn" onclick="document.getElementById('submit-work-btn').click()" title="최종 제출">📤</button>
+    </div>
+    <div class="np-progress-row">
+      <span id="np-time-current">0자</span>
+      <div class="np-progress-bar-bg">
+        <div class="np-progress-bar-fill" id="np-progress-fill"></div>
+      </div>
+      <span id="np-time-max">300자 권장</span>
+    </div>
+  </div>
+  <div class="np-right">
+    <span class="np-volume-icon">📝</span>
+    <span style="font-size: 11px; color: var(--text-muted);" id="np-auto-save-label">자동저장 활성화</span>
+  </div>
+</div>
+
+<!-- Modals -->
+
+<!-- 1. Teacher Student Work view Modal -->
+<div id="modal-student-work" class="modal-overlay" onclick="if(event.target===this)window.closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-student-name">학생의 글</div>
+      <button class="modal-close" onclick="window.closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+        <div id="modal-student-badge"></div>
+        <span style="font-size: 13px; color: var(--text-muted);" id="modal-student-date"></span>
+      </div>
+      
+      <div style="font-size: 18px; font-weight: 700; margin-bottom: 12px;" id="modal-student-title"></div>
+      
+      <div class="ai-box" style="min-height: 120px; max-height: 240px; overflow-y: auto; margin-bottom: 24px;" id="modal-student-content"></div>
+      
+      <div class="form-group">
+        <label class="form-label">⭐ 별점 평가 (우수작 척도)</label>
+        <div class="modal-stars" id="modal-star-input">
+          <span class="star-interactive" data-val="1">★</span>
+          <span class="star-interactive" data-val="2">★</span>
+          <span class="star-interactive" data-val="3">★</span>
+          <span class="star-interactive" data-val="4">★</span>
+          <span class="star-interactive" data-val="5">★</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">👩‍🏫 교사의 따뜻한 한마디 (피드백)</label>
+        <textarea id="modal-feedback" class="form-control" rows="3" placeholder="학생에게 전달할 피드백 내용을 적어주세요."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">✏️ 내용 직접 교정하기 (선택 사항)</label>
+        <textarea id="modal-edit-content" class="form-control" rows="6" placeholder="학생이 쓴 글 내용 중 수정이 필요한 부분이 있다면 고쳐주세요."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-spotify-secondary" onclick="window.closeModal()">취소</button>
+      <button class="btn-spotify-secondary" style="border-color: var(--color-warning); color: var(--color-warning);" onclick="window.sendFeedback('수정요청')">🔄 수정 요청</button>
+      <button class="btn-spotify" onclick="window.sendFeedback('과제완료')">✅ 완료 처리</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Student My Work Detail View Modal -->
+<div id="modal-my-work" class="modal-overlay" onclick="if(event.target===this)closeMyModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="my-modal-title">나의 글 상세 정보</div>
+      <button class="modal-close" onclick="closeMyModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+        <div id="my-modal-badge"></div>
+        <span style="font-size: 13px; color: var(--text-muted);" id="my-modal-topic"></span>
+        <span id="my-modal-star" style="color: var(--color-warning);"></span>
+      </div>
+      
+      <div class="ai-box" style="min-height: 120px; max-height: 240px; overflow-y: auto;" id="my-modal-content"></div>
+      
+      <div id="my-modal-feedback" class="box-warning" style="display: none; margin-top: 20px;">
+        <div class="box-warning-title">📝 선생님의 피드백</div>
+        <div id="my-modal-feedback-text" style="font-size: 14px; line-height: 1.6;"></div>
+      </div>
+      
+      <div style="margin-top: 24px;" id="my-modal-edit-btn-wrap"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-spotify" onclick="closeMyModal()">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bundled main bundle script -->
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
