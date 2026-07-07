@@ -766,7 +766,7 @@ function focusMyWorksList() {
 }
 
 function openMyWork(idx) {
-  const w = window._myWorks[idx];
+  const w = window._cachedWorks[idx];
   if (!w) return;
 
   const topics = window._cachedTopics || [];
@@ -1811,6 +1811,9 @@ window.logout = logout;
 window.runSpellCheck = runSpellCheck;
 window.runRefine = runRefine;
 window.closeRefine = closeRefine;
+window.selectTopic = selectTopic;
+window.openMyWork = openMyWork;
+window.goEditFromModal = goEditFromModal;
 
 // Global Helpers
 function escapeHtml(str) {
