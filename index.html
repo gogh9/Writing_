@@ -1039,12 +1039,16 @@ textarea.form-control {
   font-size: 14px;
   font-weight: 700;
   z-index: 999;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
   box-shadow: var(--shadow-heavy);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .toast-msg.show {
   transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .toast-msg.success { background-color: var(--spotify-green); color: #000; }
