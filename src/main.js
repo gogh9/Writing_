@@ -1016,7 +1016,7 @@ async function submitWork() {
 }
 
 async function handleAICallClientSide(methodName, args, runner) {
-  const apiKey = localStorage.getItem('gemini_api_key') || '';
+  const apiKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
   if (!apiKey) {
     runner._failure('Gemini API Key가 설정되지 않았습니다. 교사 설정에서 API Key를 입력해주세요.');
     showToast('Gemini API Key가 설정되지 않았습니다. 교사 설정에서 입력해주세요.', 'error');
