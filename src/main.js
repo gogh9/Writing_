@@ -271,7 +271,7 @@ const DB = {
         db[studentName][idx].title = title;
         db[studentName][idx].content = content;
         db[studentName][idx].status = status;
-        db[studentName][idx].date = now;
+        // date는 최초 작성일을 유지 (교사 수정 시 변경 방지)
       } else {
         db[studentName].push({
           topicId, title, content, status, date: now, feedback: '', star: 0
@@ -400,7 +400,7 @@ const DB = {
             title: work.title,
             content: work.content,
             feedback: work.feedback || '',
-            date: work.updated_at ? new Date(work.updated_at).toLocaleDateString() : '',
+            date: work.created_at ? new Date(work.created_at).toLocaleDateString() : (work.updated_at ? new Date(work.updated_at).toLocaleDateString() : ''),
             star: work.star || 0,
             id: work.id
           };
@@ -678,7 +678,7 @@ function renderWorksFromCache() {
       <div class="work-row" onclick="window.openMyWork(${i})">
         <div class="work-info-part">
           <span class="work-title-h">${escapeHtml(w.title || '(제목 없음)')}</span>
-          <span class="work-subtitle-meta">주제: ${escapeHtml(topicMap[w.topic_id] || w.topic_id)} | 작성일: ${new Date(w.updated_at).toLocaleDateString()} ${stars}</span>
+          <span class="work-subtitle-meta">주제: ${escapeHtml(topicMap[w.topic_id] || w.topic_id)} | 작성일: ${new Date(w.created_at || w.updated_at).toLocaleDateString()} ${stars}</span>
         </div>
         <span class="badge ${badgeClass}">${w.status}</span>
       </div>
@@ -1353,7 +1353,7 @@ window.onTeacherSelectStudent = async function (email) {
     title: w.title,
     content: w.content,
     status: w.status,
-    date: w.updated_at ? new Date(w.updated_at).toLocaleDateString() : '',
+    date: w.created_at ? new Date(w.created_at).toLocaleDateString() : (w.updated_at ? new Date(w.updated_at).toLocaleDateString() : ''),
     feedback: w.feedback,
     star: w.star,
     topic_id: w.topic_id
@@ -2048,6 +2048,12 @@ function showPage(pageId) {
       header.style.display = 'flex';
     }
   }
+
+  // Show/hide sidebar nav items based on role
+  const isTeacher = pageId === 'teacher';
+  const isStudent = pageId === 'student';
+  document.querySelectorAll('.teacher-nav').forEach(el => el.style.display = isTeacher ? 'block' : 'none');
+  document.querySelectorAll('.student-nav').forEach(el => el.style.display = isStudent ? 'block' : 'none');
 }
 
 function showLoading(show) {

@@ -1201,11 +1201,7 @@ textarea.form-control {
         <input type="text" id="student-name-input" class="form-control" placeholder="로컬 모드 이름 입력"/>
       </div>
 
-      <div style="margin-top: 24px; font-size: 13px;">
-        <a href="#" style="color: var(--text-muted); text-decoration: underline;" onclick="goToParentLogin()">학부모이신가요?</a>
-        <span style="color: var(--text-muted); margin: 0 8px;">|</span>
-        <a href="#" style="color: var(--text-muted); text-decoration: underline;" onclick="goToTeacherLogin()">선생님이신가요?</a>
-      </div>
+
     </div>
   </div>
 
@@ -1310,7 +1306,7 @@ textarea.form-control {
         
         <div class="card">
           <!-- Grid: left = selects (same width), right = button -->
-          <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start;">
+          <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; max-width: 480px;">
             <div style="display: flex; flex-direction: column; gap: 8px;">
               <select id="teacher-topic-select-dropdown" class="form-control" style="border-radius: 8px; width: 100%; font-size: 14px; padding: 8px 14px;" onchange="window.onTeacherSelectTopic(this.value)">
                 <!-- Dynamic -->
