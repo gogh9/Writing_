@@ -604,7 +604,7 @@ function renderTopicsFromCache() {
     if (status === '수정요청') badgeClass = 'badge-revise';
 
     html += `
-      <div class="spotify-topic-card ${selectedTopicId === t.id ? 'selected' : ''}" onclick="window.selectTopic('${t.id}', '${escapeHtml(t.title)}', '${escapeHtml(t.guide || '')}')">
+      <div class="spotify-topic-card ${selectedTopicId === t.id ? 'selected' : ''}" onclick="window.selectTopic('${t.id}')">
         <div class="topic-badge-container">
           <span class="topic-index">TOPIC ${String(i + 1).padStart(2, '0')}</span>
           <span class="badge ${badgeClass}">${status}</span>
@@ -663,7 +663,12 @@ function showViewStudent(view) {
   document.getElementById('view-editor').style.display = view === 'editor' ? 'block' : 'none';
 }
 
-async function selectTopic(id, title, guide) {
+async function selectTopic(id) {
+  const topics = window._cachedTopics || [];
+  const topic = topics.find(t => t.id === id);
+  const title = topic ? topic.title : '';
+  const guide = topic ? topic.guide : '';
+
   selectedTopicId = id;
   selectedTopicTitle = title;
   selectedTopicGuide = guide;
@@ -795,14 +800,14 @@ function openMyWork(idx) {
   }
 
   const btnWrap = document.getElementById('my-modal-edit-btn-wrap');
-  btnWrap.innerHTML = `<button class="btn-spotify" onclick="window.goEditFromModal('${w.topic_id}', '${escapeHtml(topicMap[w.topic_id])}')">✏️ 수정하러 가기</button>`;
+  btnWrap.innerHTML = `<button class="btn-spotify" onclick="window.goEditFromModal('${w.topic_id}')">✏️ 수정하러 가기</button>`;
 
   document.getElementById('modal-my-work').style.display = 'flex';
 }
 
-function goEditFromModal(topicId, topicTitle) {
+function goEditFromModal(topicId) {
   closeMyModal();
-  selectTopic(topicId, topicTitle, '');
+  selectTopic(topicId);
 }
 
 function closeMyModal() {
