@@ -1728,12 +1728,88 @@ document.addEventListener('DOMContentLoaded', () => {
   loadTeacherSettingsInputs();
 });
 
+// Global UI & Navigation Helpers
+function showPage(pageId) {
+  const pages = document.querySelectorAll('.page');
+  pages.forEach(p => p.classList.remove('active'));
+  
+  const targetId = pageId.startsWith('page-') ? pageId : `page-${pageId}`;
+  const target = document.getElementById(targetId);
+  if (target) {
+    target.classList.add('active');
+  } else {
+    console.error(`Page element not found: ${targetId}`);
+  }
+  
+  const header = document.getElementById('app-header');
+  if (header) {
+    if (pageId === 'login' || pageId === 'parent-login' || pageId === 'page-login' || pageId === 'page-parent-login') {
+      header.style.display = 'none';
+    } else {
+      header.style.display = 'flex';
+    }
+  }
+}
+
+function showLoading(show) {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) {
+    overlay.style.display = show ? 'flex' : 'none';
+  }
+}
+
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  
+  toast.textContent = message;
+  toast.className = `toast-msg show ${type}`;
+  
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.className = 'toast-msg';
+  }, 3000);
+}
+
+function goToParentLogin() {
+  showPage('parent-login');
+}
+
+function goToTeacherLogin() {
+  showToast('교사 계정으로 로그인합니다. 구글 계정을 선택해 주세요.', 'info');
+  loginStudentGoogle();
+}
+
+function goToMainLogin() {
+  showPage('login');
+}
+
+function backToMain() {
+  if (currentUser) {
+    if (currentRole === 'teacher') {
+      showPage('teacher');
+    } else if (currentRole === 'student') {
+      showPage('student');
+      backToTopicList();
+    } else {
+      showPage('login');
+    }
+  } else {
+    showPage('login');
+  }
+}
+
 // Navigation shortcuts
 window.backToTopicList = backToTopicList;
 window.focusMyWorksList = focusMyWorksList;
 window.goToParentLogin = goToParentLogin;
 window.goToTeacherLogin = goToTeacherLogin;
 window.goToMainLogin = goToMainLogin;
+window.backToMain = backToMain;
+window.closeMyModal = closeMyModal;
+window.showPage = showPage;
+window.showLoading = showLoading;
+window.showToast = showToast;
 window.logout = logout;
 window.runSpellCheck = runSpellCheck;
 window.runRefine = runRefine;
