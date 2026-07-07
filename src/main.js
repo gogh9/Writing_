@@ -54,7 +54,7 @@ const DB = {
 
       // Check if it's the configured teacher email
       const teacherEmail = localStorage.getItem('teacher_email') || 'gogh9@susake.sen.es.kr';
-      if (teacherEmail === email) {
+      if (teacherEmail === email || email === 'gogh9@susae.sen.es.kr' || email === 'gogh9@susake.sen.es.kr') {
         return { valid: true, name: '선생님', isTeacher: true };
       }
 
@@ -474,6 +474,7 @@ async function initAuthState() {
 
 async function handleUserSession(session) {
   const email = session.user.email;
+  console.log('로그인 시도 이메일 (Google Email):', email);
   currentUserEmail = email;
   showLoading(true);
 
