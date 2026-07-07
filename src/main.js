@@ -961,6 +961,94 @@ async function submitWork() {
   }
 }
 
+async function handleAICallClientSide(methodName, args, runner) {
+  const apiKey = localStorage.getItem('openai_api_key') || '';
+  if (!apiKey) {
+    runner._failure('OpenAI API Key가 설정되지 않았습니다. 교사 설정에서 API Key를 입력해주세요.');
+    showToast('OpenAI API Key가 설정되지 않았습니다. 교사 설정에서 입력해주세요.', 'error');
+    return;
+  }
+
+  try {
+    let systemPrompt = '';
+    let userPrompt = '';
+    let responseFormatType = 'json_object';
+
+    if (methodName === 'checkSpelling') {
+      const text = args[0];
+      systemPrompt = '한국어 맞춤법 검사 전문가입니다. 실제로 틀린 것만 찾아주세요. 규칙: 1)띄어쓰기만 다른 경우는 포함하지 마세요. 2)올바른 표현은 포함하지 마세요. 3)original과 corrected가 같으면 포함하지 마세요. 반드시 순수 JSON만 응답하세요. 형식: {"items":[{"original":"틀린표현","corrected":"올바른표현","help":"간단한설명"}]} 오류 없으면 {"items":[]}';
+      userPrompt = text;
+    } else if (methodName === 'refineText') {
+      const [text, topicTitle, topicGuide] = args;
+      systemPrompt = '초등학교 교사이며 글쓰기 지도 전문가입니다. 학생이 작성한 글을 분석하여 문맥을 매끄럽게 다듬고, 맞춤법을 수정하며, 더 좋은 문장 표현으로 다듬어 줍니다. 단, 학생의 원래 의도와 주제를 훼손하지 않아야 합니다. 반드시 다듬어진 최종 글 본문만 JSON 형식으로 응답하세요. 형식: {"refined":"다듬어진 최종 글 전체 내용"}';
+      userPrompt = `주제: ${topicTitle}\n안내 및 조건: ${topicGuide}\n\n학생이 작성한 글:\n${text}`;
+    } else {
+      throw new Error(`지원하지 않는 AI 메서드입니다: ${methodName}`);
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: methodName === 'checkSpelling' ? 0 : 0.7,
+        max_tokens: 1500,
+        response_format: { type: responseFormatType }
+      })
+    });
+
+    if (response.status === 401) {
+      runner._failure('API 키가 잘못되었습니다.');
+      return;
+    }
+    if (response.status === 429) {
+      runner._failure('API 사용량이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    if (!response.ok) {
+      runner._failure(`API 오류 (코드: ${response.status})`);
+      return;
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content.trim();
+    const result = JSON.parse(content);
+
+    if (methodName === 'checkSpelling') {
+      const rawItems = result.items || [];
+      const filtered = [];
+      const seen = {};
+
+      for (const item of rawItems) {
+        if (!item.original || !item.corrected) continue;
+        const orig = item.original.replace(/\s+/g, '');
+        const corr = item.corrected.replace(/\s+/g, '');
+        if (orig === corr) continue;
+        if (item.help && (item.help.includes('오류가 없') || item.help.includes('맞춤법 오류가 없'))) continue;
+
+        const key = `${item.original}>>>${item.corrected}`;
+        if (!seen[key]) {
+          seen[key] = true;
+          filtered.push(item);
+        }
+      }
+      runner._success({ items: filtered });
+    } else {
+      runner._success(result);
+    }
+  } catch (e) {
+    console.error('AI 호출 오류:', e);
+    runner._failure(`오류: ${e.message}`);
+  }
+}
+
 // Spellcheck and OpenAI Text Refine calls
 async function runSpellCheck() {
   const text = getEditorText().trim();
