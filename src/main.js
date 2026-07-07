@@ -51,7 +51,7 @@ const DB = {
       if (data) {
         return { valid: true, name: data.name };
       }
-      
+
       // Check if it's the configured teacher email
       const teacherEmail = localStorage.getItem('teacher_email') || '';
       if (teacherEmail === email) {
@@ -73,7 +73,7 @@ const DB = {
       .from('students')
       .select('name, email, parent_code')
       .order('name', { ascending: true });
-    
+
     if (error) {
       console.error(error);
       return [];
@@ -110,7 +110,7 @@ const DB = {
       .from('topics')
       .select('*')
       .order('id', { ascending: true });
-    
+
     if (error) {
       console.error(error);
       return [];
@@ -494,7 +494,7 @@ async function handleUserSession(session) {
       document.getElementById('header-user').textContent = `🙋 ${reg.name}`;
       document.getElementById('np-student-name').textContent = reg.name;
       showPage('student');
-      
+
       // Query Student topics and works
       const topics = await DB.getTopicList();
       const works = await DB.getStudentWorks(email);
@@ -517,7 +517,7 @@ async function loginStudentGoogle() {
     // Local storage fallback login
     const name = document.getElementById('student-name-input').value.trim();
     if (!name) { showToast('이름을 입력해주세요!', 'error'); return; }
-    
+
     const list = await DB.getStudentList();
     if (!list.includes(name)) {
       showToast('등록되지 않은 이름입니다.', 'error');
@@ -529,9 +529,9 @@ async function loginStudentGoogle() {
     currentRole = 'student';
     document.getElementById('header-user').textContent = `🙋 ${name}`;
     document.getElementById('np-student-name').textContent = name;
-    
+
     showPage('student');
-    
+
     const topics = await DB.getTopicList();
     const works = await DB.getStudentWorks(currentUserEmail);
     window._cachedTopics = topics;
@@ -560,7 +560,7 @@ async function logout() {
     await supabase.auth.signOut();
   }
   showLoading(false);
-  
+
   currentUser = null;
   currentUserEmail = null;
   currentRole = null;
@@ -571,7 +571,7 @@ async function logout() {
   document.getElementById('parent-code-input').value = '';
   document.getElementById('editor-title').value = '';
   document.getElementById('editor-content').innerHTML = '';
-  
+
   showViewStudent('topic-list');
   showPage('login');
 }
@@ -581,7 +581,7 @@ async function logout() {
 // =========================================================================
 function renderTopicsFromCache() {
   const topics = window._cachedTopics || [];
-  const works  = window._cachedWorks  || [];
+  const works = window._cachedWorks || [];
   const container = document.getElementById('student-topic-list');
   if (!container) return;
 
@@ -605,7 +605,7 @@ function renderTopicsFromCache() {
     html += `
       <div class="spotify-topic-card ${selectedTopicId === t.id ? 'selected' : ''}" onclick="selectTopic('${t.id}', '${escapeHtml(t.title)}', '${escapeHtml(t.guide || '')}')">
         <div class="topic-badge-container">
-          <span class="topic-index">TOPIC ${String(i+1).padStart(2, '0')}</span>
+          <span class="topic-index">TOPIC ${String(i + 1).padStart(2, '0')}</span>
           <span class="badge ${badgeClass}">${status}</span>
         </div>
         <div class="topic-title">${escapeHtml(t.title)}</div>
@@ -641,7 +641,7 @@ function renderWorksFromCache() {
 
     let stars = '';
     if (w.star > 0) {
-      stars = `<span style="color: var(--color-warning); margin-left: 8px;">${'★'.repeat(w.star)}${'☆'.repeat(5-w.star)}</span>`;
+      stars = `<span style="color: var(--color-warning); margin-left: 8px;">${'★'.repeat(w.star)}${'☆'.repeat(5 - w.star)}</span>`;
     }
 
     html += `
@@ -669,7 +669,7 @@ async function selectTopic(id, title, guide) {
 
   document.getElementById('selected-topic-title').textContent = title;
   document.getElementById('selected-topic-guide').textContent = guide || '자유롭게 서술해주세요.';
-  
+
   // Update Bottom player bar
   document.getElementById('np-topic-title').textContent = title;
   document.getElementById('now-playing-panel').style.display = 'flex';
@@ -679,7 +679,7 @@ async function selectTopic(id, title, guide) {
   document.getElementById('editor-content').innerHTML = '';
   document.getElementById('editor-status-badge').innerHTML = '';
   document.getElementById('student-feedback-box').style.display = 'none';
-  
+
   closeRefine();
   document.getElementById('spell-panel').classList.remove('open');
 
@@ -707,7 +707,7 @@ async function selectTopic(id, title, guide) {
       setEditorBadge('미작성');
     }
     renderTopWorks(topWorks);
-  } catch(e) {
+  } catch (e) {
     showLoading(false);
     renderTopWorks([]);
   }
@@ -744,7 +744,7 @@ async function backToTopicList() {
   selectedTopicId = null;
   document.getElementById('now-playing-panel').style.display = 'none';
   showViewStudent('topic-list');
-  
+
   // Reload topics & works
   showLoading(true);
   const topics = await DB.getTopicList();
@@ -775,7 +775,7 @@ function openMyWork(idx) {
   document.getElementById('my-modal-title').textContent = w.title || '(제목 없음)';
   document.getElementById('my-modal-badge').innerHTML = statusBadgeHTML(w.status);
   document.getElementById('my-modal-topic').textContent = `📌 ${topicMap[w.topic_id] || w.topic_id} | ${new Date(w.updated_at).toLocaleDateString()}`;
-  
+
   const starEl = document.getElementById('my-modal-star');
   if (w.star > 0) {
     starEl.textContent = '★'.repeat(w.star);
@@ -784,7 +784,7 @@ function openMyWork(idx) {
   }
 
   document.getElementById('my-modal-content').textContent = w.content || '';
-  
+
   const fbBox = document.getElementById('my-modal-feedback');
   if (w.feedback) {
     fbBox.style.display = 'block';
@@ -816,7 +816,7 @@ function closeMyModal() {
 function getEditorText() {
   const el = document.getElementById('editor-content');
   if (!el) return '';
-  
+
   let lines = [];
   el.childNodes.forEach(node => {
     if (node.nodeType === 3) {
@@ -852,7 +852,7 @@ function setEditorContent(text) {
   if (!el) return;
   el.innerHTML = '';
   if (!text) return;
-  
+
   const lines = text.split('\n');
   lines.forEach(line => {
     const p = document.createElement('p');
@@ -869,7 +869,7 @@ function updateCharCount() {
   const len = getEditorText().length;
   document.getElementById('char-count').textContent = `${len.toLocaleString()}자`;
   document.getElementById('np-time-current').textContent = `${len}자`;
-  
+
   const progressPercent = Math.min((len / 300) * 100, 100);
   document.getElementById('np-progress-fill').style.width = `${progressPercent}%`;
 }
@@ -879,7 +879,7 @@ function scheduleAutoSave() {
   document.getElementById('auto-save-time').textContent = '입력 중...';
   document.getElementById('np-auto-save-label').textContent = '저장 중...';
 
-  autoSaveTimer = setTimeout(async function() {
+  autoSaveTimer = setTimeout(async function () {
     const title = document.getElementById('editor-title').value.trim();
     const content = getEditorText();
     if (title && content && currentRole === 'student' && selectedTopicId) {
@@ -897,11 +897,11 @@ function setEditorBadge(status) {
 
 function statusBadgeHTML(status) {
   const map = {
-    '임시저장': ['badge-draft','💾 임시저장'],
-    '제출완료': ['badge-submitted','📤 제출완료'],
-    '과제완료': ['badge-done','✅ 완료'],
-    '수정요청': ['badge-revise','🔄 수정요청'],
-    '미작성': ['badge-none','⬜ 미작성']
+    '임시저장': ['badge-draft', '💾 임시저장'],
+    '제출완료': ['badge-submitted', '📤 제출완료'],
+    '과제완료': ['badge-done', '✅ 완료'],
+    '수정요청': ['badge-revise', '🔄 수정요청'],
+    '미작성': ['badge-none', '⬜ 미작성']
   };
   const entry = map[status] || ['badge-none', status || '미작성'];
   return `<span class="badge ${entry[0]}">${entry[1]}</span>`;
@@ -911,15 +911,15 @@ function setAlign(align) {
   document.querySelectorAll('.toolbar-btn').forEach(btn => {
     btn.classList.remove('active');
   });
-  
+
   if (align === 'left') document.getElementById('align-left').classList.add('active');
   if (align === 'center') document.getElementById('align-center').classList.add('active');
   if (align === 'right') document.getElementById('align-right').classList.add('active');
-  
+
   try {
     const cmd = align === 'left' ? 'justifyLeft' : align === 'center' ? 'justifyCenter' : 'justifyRight';
     document.execCommand(cmd, false, null);
-  } catch(e) {}
+  } catch (e) { }
 }
 
 // Student Action Buttons
@@ -928,7 +928,7 @@ async function saveDraft() {
   const content = getEditorText();
   if (!title) { showToast('제목을 입력해주세요!', 'error'); return; }
   if (!content) { showToast('내용을 입력해주세요!', 'error'); return; }
-  
+
   showLoading(true);
   const res = await DB.saveStudentWork(currentUserEmail, currentUser, selectedTopicId, title, content, '임시저장');
   showLoading(false);
@@ -946,7 +946,7 @@ async function submitWork() {
   const content = getEditorText();
   if (!title) { showToast('제목을 입력해주세요!', 'error'); return; }
   if (!content || content.length < 30) { showToast('글 내용을 30자 이상 작성해주세요!', 'error'); return; }
-  
+
   if (!confirm('선생님께 글을 제출할까요? 제출한 글은 피드백 전까지 수정할 수 없습니다.')) return;
 
   showLoading(true);
@@ -1053,7 +1053,7 @@ async function handleAICallClientSide(methodName, args, runner) {
 async function runSpellCheck() {
   const text = getEditorText().trim();
   if (!text) { showToast('글을 먼저 작성해주세요.', 'error'); return; }
-  
+
   const panel = document.getElementById('spell-panel');
   const results = document.getElementById('spell-results');
   panel.classList.add('open');
@@ -1063,7 +1063,7 @@ async function runSpellCheck() {
 
   // Run mock run call which proxies to OpenAI Client
   const runner = {
-    _success: function(data) {
+    _success: function (data) {
       if (!data || data.error) {
         results.innerHTML = `<div style="color: var(--color-error);">${(data && data.error) || '오류가 발생했습니다.'}</div>`;
         return;
@@ -1074,7 +1074,7 @@ async function runSpellCheck() {
       }
       renderSpellResults(data.items);
     },
-    _failure: function(err) {
+    _failure: function (err) {
       results.innerHTML = '<div style="color: var(--color-error);">맞춤법 검사 중 시스템 에러가 발생했습니다.</div>';
     }
   };
@@ -1085,7 +1085,7 @@ async function runSpellCheck() {
 function renderSpellResults(items) {
   const results = document.getElementById('spell-results');
   window._spellItems = items;
-  
+
   let html = '';
   items.forEach((item, i) => {
     html += `
@@ -1105,14 +1105,14 @@ function renderSpellResults(items) {
   results.innerHTML = html;
 }
 
-window.applySpell = function(idx) {
+window.applySpell = function (idx) {
   const item = window._spellItems[idx];
   if (!item) return;
 
   const escaped = item.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(escaped, 'g');
   const newText = getEditorText().replace(re, item.corrected);
-  
+
   setEditorContent(newText);
   updateCharCount();
 
@@ -1143,7 +1143,7 @@ async function runRefine() {
   content.innerHTML = '<div style="color: var(--text-muted); text-align: center;">AI 선생님이 문장을 아름답게 다듬고 있습니다...</div>';
 
   const runner = {
-    _success: function(result) {
+    _success: function (result) {
       if (!result || result.error) {
         content.innerHTML = `<div style="color: var(--color-error);">${(result && result.error) || '오류가 발생했습니다.'}</div>`;
         return;
@@ -1151,7 +1151,7 @@ async function runRefine() {
       content.textContent = result.refined;
       window._refinedText = result.refined;
     },
-    _failure: function() {
+    _failure: function () {
       content.innerHTML = '<div style="color: var(--color-error);">글 다듬기 처리 중 장애가 발생했습니다.</div>';
     }
   };
@@ -1159,7 +1159,7 @@ async function runRefine() {
   handleAICallClientSide('refineText', [text, selectedTopicTitle, selectedTopicGuide], runner);
 }
 
-window.applyRefined = function() {
+window.applyRefined = function () {
   if (!window._refinedText) return;
   setEditorContent(window._refinedText);
   updateCharCount();
@@ -1173,9 +1173,9 @@ function closeRefine() {
 }
 
 // ══ TEACHER VIEW FUNCTIONS ══
-window.switchTeacherTab = function(tab) {
+window.switchTeacherTab = function (tab) {
   document.querySelectorAll('.teacher-nav').forEach(el => el.classList.remove('active'));
-  
+
   if (tab === 'overview') document.getElementById('tnav-overview').classList.add('active');
   if (tab === 'topics') document.getElementById('tnav-topics').classList.add('active');
   if (tab === 'settings') document.getElementById('tnav-settings').classList.add('active');
@@ -1183,7 +1183,7 @@ window.switchTeacherTab = function(tab) {
   document.getElementById('teacher-tab-overview').style.display = tab === 'overview' ? 'block' : 'none';
   document.getElementById('teacher-tab-topics').style.display = tab === 'topics' ? 'block' : 'none';
   document.getElementById('teacher-tab-settings').style.display = tab === 'settings' ? 'block' : 'none';
-  
+
   if (tab === 'topics') loadTopicsForManage();
 };
 
@@ -1206,7 +1206,7 @@ async function loadTopicsForTeacher() {
   }
 }
 
-window.onTeacherSelectTopic = function(topicId) {
+window.onTeacherSelectTopic = function (topicId) {
   if (!topicId) {
     document.getElementById('teacher-overview-content').style.display = 'none';
     return;
@@ -1214,13 +1214,13 @@ window.onTeacherSelectTopic = function(topicId) {
   currentTeacherTopicId = topicId;
   const select = document.getElementById('teacher-topic-select-dropdown');
   const title = select.options[select.selectedIndex].text;
-  
+
   document.getElementById('overview-title').textContent = `👥 ${title} - 진행 상태`;
   document.getElementById('teacher-overview-content').style.display = 'block';
   loadSubmissionsForTopic(topicId);
 };
 
-window.reloadSubmissions = function() {
+window.reloadSubmissions = function () {
   if (currentTeacherTopicId) loadSubmissionsForTopic(currentTeacherTopicId);
 };
 
@@ -1237,7 +1237,7 @@ async function loadSubmissionsForTopic(topicId) {
 function renderStats(submissions) {
   const total = submissions.length;
   let submitted = 0, done = 0, revise = 0, none = 0;
-  
+
   submissions.forEach(s => {
     if (s.status === '제출완료') submitted++;
     else if (s.status === '과제완료') done++;
@@ -1276,7 +1276,7 @@ function renderStudentGrid(submissions) {
     return;
   }
 
-  const avatars = ['🐱','🦊','🐹','🐶','🦁','🐼','🐰','🐸','🐨','🐙','🦄','🐬','🐝','🐳','🦩','🦚','🦜'];
+  const avatars = ['🐱', '🦊', '🐹', '🐶', '🦁', '🐼', '🐰', '🐸', '🐨', '🐙', '🦄', '🐬', '🐝', '🐳', '🦩', '🦚', '🦜'];
   function getAvatar(name) {
     let code = 0;
     for (let c = 0; c < name.length; c++) code += name.charCodeAt(c);
@@ -1304,7 +1304,7 @@ function renderStudentGrid(submissions) {
   grid.innerHTML = html;
 }
 
-window.openStudentWork = function(idx) {
+window.openStudentWork = function (idx) {
   const s = window._submissions[idx];
   if (!s) return;
 
@@ -1314,13 +1314,13 @@ window.openStudentWork = function(idx) {
   }
 
   selectedStudentData = { ...s };
-  
+
   document.getElementById('modal-student-name').textContent = `${s.name} 학생의 제출 글`;
   document.getElementById('modal-student-badge').innerHTML = statusBadgeHTML(s.status);
   document.getElementById('modal-student-date').textContent = s.date ? `작성일: ${s.date}` : '';
   document.getElementById('modal-student-title').textContent = s.title || '(제목 없음)';
   document.getElementById('modal-student-content').textContent = s.content || '(본문 없음)';
-  
+
   document.getElementById('modal-feedback').value = s.feedback || '';
   document.getElementById('modal-edit-content').value = s.content || '';
 
@@ -1341,16 +1341,16 @@ function renderStarInput(val) {
   });
 }
 
-window.closeModal = function() {
+window.closeModal = function () {
   document.getElementById('modal-student-work').style.display = 'none';
   selectedStudentData = null;
 };
 
-window.sendFeedback = async function(status) {
+window.sendFeedback = async function (status) {
   if (!selectedStudentData) return;
   const feedback = document.getElementById('modal-feedback').value.trim();
   const editedContent = document.getElementById('modal-edit-content').value.trim();
-  
+
   const content = editedContent !== selectedStudentData.content ? editedContent : '';
 
   showLoading(true);
@@ -1380,7 +1380,7 @@ async function loadTopicsForManage() {
     html += `
       <div style="background-color: var(--bg-interactive); padding: 18px; border-radius: 6px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
         <div style="flex: 1;">
-          <span style="font-size: 11px; color: var(--spotify-green); font-weight:700;">TOPIC ${i+1} (${t.id})</span>
+          <span style="font-size: 11px; color: var(--spotify-green); font-weight:700;">TOPIC ${i + 1} (${t.id})</span>
           <div style="font-size: 16px; font-weight: 700; margin: 4px 0;">${escapeHtml(t.title)}</div>
           <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; white-space: pre-wrap;">${escapeHtml(t.guide || '')}</div>
         </div>
@@ -1394,7 +1394,7 @@ async function loadTopicsForManage() {
   container.innerHTML = html;
 }
 
-window.addTopic = async function() {
+window.addTopic = async function () {
   const title = document.getElementById('new-topic-title').value.trim();
   const guide = document.getElementById('new-topic-guide').value.trim();
   if (!title) { showToast('주제 제목을 입력해주세요!', 'error'); return; }
@@ -1414,7 +1414,7 @@ window.addTopic = async function() {
   }
 };
 
-window.editTopicPopup = async function(id, title, guide) {
+window.editTopicPopup = async function (id, title, guide) {
   const newTitle = prompt('새 주제 제목:', title);
   if (newTitle === null) return;
   const newGuide = prompt('새 주제 설명:', guide);
@@ -1433,7 +1433,7 @@ window.editTopicPopup = async function(id, title, guide) {
   }
 };
 
-window.deleteTopic = async function(id) {
+window.deleteTopic = async function (id) {
   if (!confirm('이 주제를 삭제할까요? (해당 주제의 학생 제출글은 유지되나 매핑이 해제됩니다)')) return;
   showLoading(true);
   const res = await DB.deleteTopic(id);
@@ -1449,10 +1449,10 @@ window.deleteTopic = async function(id) {
 };
 
 // ══ PARENT LOOKUP FUNCTIONS ══
-window.loginParent = async function() {
+window.loginParent = async function () {
   const name = document.getElementById('parent-name-input').value.trim();
   const code = document.getElementById('parent-code-input').value.trim();
-  
+
   if (!name) { showToast('학생 이름을 입력해주세요!', 'error'); return; }
   if (!code) { showToast('인증번호를 입력해주세요!', 'error'); return; }
 
@@ -1530,16 +1530,16 @@ function loadTeacherSettingsInputs() {
   document.getElementById('setting-auth-list').value = teacherEmail;
 }
 
-window.saveSettings = function() {
+window.saveSettings = function () {
   const key = document.getElementById('setting-openai-key').value.trim();
   localStorage.setItem('openai_api_key', key);
   showToast('OpenAI API Key 설정이 저장되었습니다.', 'success');
 };
 
-window.saveStudentsConfig = async function() {
+window.saveStudentsConfig = async function () {
   const lines = document.getElementById('setting-student-list').value.split('\n');
   const studentsArray = [];
-  
+
   lines.forEach(line => {
     const parts = line.split(',');
     if (parts.length >= 3) {
@@ -1563,17 +1563,17 @@ window.saveStudentsConfig = async function() {
   showToast(res.message, res.success ? 'success' : 'error');
 };
 
-window.saveAuthConfig = function() {
+window.saveAuthConfig = function () {
   const email = document.getElementById('setting-auth-list').value.trim();
   localStorage.setItem('teacher_email', email);
   showToast('선생님 인증용 이메일이 설정되었습니다.', 'success');
 };
 
 // Backup downloads
-window.exportDataJSON = async function() {
+window.exportDataJSON = async function () {
   const topics = await DB.getTopicList();
   const students = await DB.getStudentList();
-  
+
   const backup = {
     students_list: students,
     topic_list: topics
@@ -1582,13 +1582,13 @@ window.exportDataJSON = async function() {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", `우리반_글쓰기_백업_${new Date().toISOString().substring(0,10)}.json`);
+  downloadAnchor.setAttribute("download", `우리반_글쓰기_백업_${new Date().toISOString().substring(0, 10)}.json`);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
 };
 
-window.exportDataCSV = async function() {
+window.exportDataCSV = async function () {
   if (!DB.isSupabaseConfigured()) {
     showToast('Supabase가 연결되어 있지 않습니다.', 'error');
     return;
@@ -1609,7 +1609,7 @@ window.exportDataCSV = async function() {
     const url = URL.createObjectURL(blob);
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", url);
-    downloadAnchor.setAttribute("download", `우리반_글쓰기_종합_${new Date().toISOString().substring(0,10)}.csv`);
+    downloadAnchor.setAttribute("download", `우리반_글쓰기_종합_${new Date().toISOString().substring(0, 10)}.csv`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -1618,12 +1618,12 @@ window.exportDataCSV = async function() {
   }
 };
 
-window.importDataJSON = async function(input) {
+window.importDataJSON = async function (input) {
   const file = input.files[0];
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = async function(e) {
+  reader.onload = async function (e) {
     try {
       const data = JSON.parse(e.target.result);
       showLoading(true);
@@ -1639,7 +1639,7 @@ window.importDataJSON = async function(input) {
       showToast('✅ 데이터 복구가 완료되었습니다.', 'success');
       loadTeacherSettingsInputs();
       loadTopicsForTeacher();
-    } catch(err) {
+    } catch (err) {
       showLoading(false);
       showToast('올바르지 않은 JSON 파일입니다.', 'error');
     }
@@ -1667,12 +1667,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('align-left').addEventListener('click', () => setAlign('left'));
   document.getElementById('align-center').addEventListener('click', () => setAlign('center'));
   document.getElementById('align-right').addEventListener('click', () => setAlign('right'));
-  
+
   // Image handler
   const photoBtn = document.getElementById('photo-btn');
   const photoInput = document.getElementById('photo-file-input');
   photoBtn.addEventListener('click', () => photoInput.click());
-  photoInput.addEventListener('change', function() {
+  photoInput.addEventListener('change', function () {
     const files = this.files;
     if (!files || files.length === 0) return;
     const editor = document.getElementById('editor-content');
@@ -1680,14 +1680,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     for (let i = 0; i < files.length; i++) {
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = function (e) {
         const img = document.createElement('img');
         img.src = e.target.result;
         img.className = 'editor-image';
-        
+
         const p = document.createElement('p');
         p.appendChild(img);
-        
+
         const sel = window.getSelection();
         if (sel.rangeCount > 0) {
           const range = sel.getRangeAt(0);
@@ -1720,7 +1720,7 @@ document.addEventListener('DOMContentLoaded', () => {
       scheduleAutoSave();
     });
   }
-  
+
   document.getElementById('editor-title').addEventListener('input', scheduleAutoSave);
 
   // Initialize Auth state
