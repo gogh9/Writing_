@@ -1202,7 +1202,11 @@ async function runRefine() {
         return;
       }
       content.textContent = result.refined;
-      window._refinedText = result.refined;
+      // Prevent copy/cut/drag on the refine content
+      content.oncopy = (e) => e.preventDefault();
+      content.oncut = (e) => e.preventDefault();
+      content.ondragstart = (e) => e.preventDefault();
+      content.oncontextmenu = (e) => e.preventDefault();
     },
     _failure: function () {
       content.innerHTML = '<div style="color: var(--color-error);">글 다듬기 처리 중 장애가 발생했습니다.</div>';
@@ -1212,17 +1216,8 @@ async function runRefine() {
   handleAICallClientSide('refineText', [text, selectedTopicTitle, selectedTopicGuide], runner);
 }
 
-window.applyRefined = function () {
-  if (!window._refinedText) return;
-  setEditorContent(window._refinedText);
-  updateCharCount();
-  closeRefine();
-  showToast('다듬은 글이 본문에 적용되었습니다.', 'success');
-};
-
 function closeRefine() {
   document.getElementById('refine-panel').classList.remove('open');
-  window._refinedText = null;
 }
 
 // ══ TEACHER VIEW FUNCTIONS ══

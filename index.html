@@ -580,6 +580,84 @@ textarea.form-control {
   box-shadow: var(--shadow-medium);
 }
 
+/* Side-by-side layout for editor + refine panel */
+.editor-refine-wrapper {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.editor-refine-wrapper .editor-card {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-refine-wrapper .refine-side-panel {
+  flex: 0 0 380px;
+  max-width: 380px;
+  position: sticky;
+  top: 20px;
+  display: none;
+}
+
+.editor-refine-wrapper .refine-side-panel.open {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+.refine-side-panel .refine-side-inner {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-gray);
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: var(--shadow-medium);
+}
+
+.refine-side-panel .ai-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--spotify-green);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.refine-side-panel .refine-body {
+  background-color: var(--bg-interactive);
+  border: 1px solid var(--border-gray);
+  border-radius: 6px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  max-height: 460px;
+  overflow-y: auto;
+  /* Prevent copy */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.refine-side-panel .refine-close-row {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .editor-refine-wrapper {
+    flex-direction: column;
+  }
+  .editor-refine-wrapper .refine-side-panel {
+    flex: none;
+    max-width: 100%;
+    width: 100%;
+    position: static;
+  }
+}
+
 .editor-title-field {
   background: none;
   border: none;
@@ -1247,49 +1325,53 @@ textarea.form-control {
 
 
 
-        <div class="editor-card">
-          <div class="card-header-bar">
-            <div class="card-title-text" id="editor-status-badge"></div>
-          </div>
-          
-          <input type="text" id="editor-title" class="editor-title-field" placeholder="글의 제목을 입력하세요" maxlength="60"/>
-          
-          <div class="editor-toolbar">
-            <button class="toolbar-btn active" id="align-left" title="왼쪽 정렬">L</button>
-            <button class="toolbar-btn" id="align-center" title="가운데 정렬">C</button>
-            <button class="toolbar-btn" id="align-right" title="오른쪽 정렬">R</button>
-            <span style="color: var(--border-light); margin: 0 4px;">|</span>
-            <button class="toolbar-btn" id="photo-btn" title="사진 삽입">📷</button>
-            <input type="file" id="photo-file-input" accept="image/*" multiple style="display:none;"/>
+        <div class="editor-refine-wrapper">
+          <div class="editor-card">
+            <div class="card-header-bar">
+              <div class="card-title-text" id="editor-status-badge"></div>
+            </div>
+            
+            <input type="text" id="editor-title" class="editor-title-field" placeholder="글의 제목을 입력하세요" maxlength="60"/>
+            
+            <div class="editor-toolbar">
+              <button class="toolbar-btn active" id="align-left" title="왼쪽 정렬">L</button>
+              <button class="toolbar-btn" id="align-center" title="가운데 정렬">C</button>
+              <button class="toolbar-btn" id="align-right" title="오른쪽 정렬">R</button>
+              <span style="color: var(--border-light); margin: 0 4px;">|</span>
+              <button class="toolbar-btn" id="photo-btn" title="사진 삽입">📷</button>
+              <input type="file" id="photo-file-input" accept="image/*" multiple style="display:none;"/>
+            </div>
+
+            <div id="editor-content" class="editor-body-field" contenteditable="true" data-placeholder="여기에 글을 써보세요. 생각과 느낌을 가득 담아 자유롭게 써보세요."></div>
+            
+            <div class="editor-footer-info">
+              <span id="char-count">0자</span>
+              <span id="auto-save-time" style="color: var(--spotify-green);">자동 저장 기능 작동 중</span>
+            </div>
+
+            <div class="editor-action-row">
+              <button class="btn-spotify-secondary" id="save-draft-btn">💾 임시저장</button>
+              <button class="btn-spotify" id="submit-work-btn">📤 제출하기</button>
+              <button class="btn-spotify-secondary" onclick="window.runSpellCheck()">📝 맞춤법 검사</button>
+              <button class="btn-spotify-secondary" onclick="window.runRefine()">✨ 글 다듬기 (AI)</button>
+            </div>
+
+            <!-- Spell Check Results -->
+            <div class="ai-panel" id="spell-panel">
+              <div class="ai-panel-title">✏️ 맞춤법 및 띄어쓰기 제안</div>
+              <div id="spell-results" class="spell-list"></div>
+            </div>
           </div>
 
-          <div id="editor-content" class="editor-body-field" contenteditable="true" data-placeholder="여기에 글을 써보세요. 생각과 느낌을 가득 담아 자유롭게 써보세요."></div>
-          
-          <div class="editor-footer-info">
-            <span id="char-count">0자</span>
-            <span id="auto-save-time" style="color: var(--spotify-green);">자동 저장 기능 작동 중</span>
-          </div>
-
-          <div class="editor-action-row">
-            <button class="btn-spotify-secondary" id="save-draft-btn">💾 임시저장</button>
-            <button class="btn-spotify" id="submit-work-btn">📤 제출하기</button>
-            <button class="btn-spotify-secondary" onclick="window.runSpellCheck()">📝 맞춤법 검사</button>
-            <button class="btn-spotify-secondary" onclick="window.runRefine()">✨ 글 다듬기 (AI)</button>
-          </div>
-
-          <!-- Spell Check Results -->
-          <div class="ai-panel" id="spell-panel">
-            <div class="ai-panel-title">✏️ 맞춤법 및 띄어쓰기 제안</div>
-            <div id="spell-results" class="spell-list"></div>
-          </div>
-
-          <!-- Refine Results -->
-          <div class="ai-panel" id="refine-panel">
-            <div class="ai-panel-title">✨ AI 선생님의 글 다듬기 제안</div>
-            <div id="refine-content" class="ai-box"></div>
-            <div style="margin-top: 14px; display: flex; gap: 8px;">
-              <button class="btn-spotify" onclick="window.applyRefined()">제안 적용하기</button>
-              <button class="btn-spotify-secondary" onclick="window.closeRefine()">닫기</button>
+          <!-- Refine Results: Side Panel -->
+          <div class="refine-side-panel" id="refine-panel">
+            <div class="refine-side-inner">
+              <div class="ai-panel-title">✨ AI 선생님의 글 다듬기 제안</div>
+              <div class="refine-hint" style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">📖 제안을 참고하여 왼쪽 글을 직접 수정해보세요</div>
+              <div id="refine-content" class="refine-body"></div>
+              <div class="refine-close-row">
+                <button class="btn-spotify-secondary" onclick="window.closeRefine()">닫기</button>
+              </div>
             </div>
           </div>
         </div>
