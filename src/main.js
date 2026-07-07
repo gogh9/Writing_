@@ -722,7 +722,7 @@ async function selectTopic(id) {
 function renderTopWorks(tops) {
   const wrap = document.getElementById('top-works-wrap');
   const container = document.getElementById('top-works-list');
-  if (!container) return;
+  if (!wrap || !container) return;
 
   if (tops.length === 0) {
     wrap.style.display = 'none';
