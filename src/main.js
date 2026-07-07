@@ -604,7 +604,7 @@ function renderTopicsFromCache() {
     if (status === '수정요청') badgeClass = 'badge-revise';
 
     html += `
-      <div class="spotify-topic-card ${selectedTopicId === t.id ? 'selected' : ''}" onclick="selectTopic('${t.id}', '${escapeHtml(t.title)}', '${escapeHtml(t.guide || '')}')">
+      <div class="spotify-topic-card ${selectedTopicId === t.id ? 'selected' : ''}" onclick="window.selectTopic('${t.id}', '${escapeHtml(t.title)}', '${escapeHtml(t.guide || '')}')">
         <div class="topic-badge-container">
           <span class="topic-index">TOPIC ${String(i + 1).padStart(2, '0')}</span>
           <span class="badge ${badgeClass}">${status}</span>
@@ -646,7 +646,7 @@ function renderWorksFromCache() {
     }
 
     html += `
-      <div class="work-row" onclick="openMyWork(${i})">
+      <div class="work-row" onclick="window.openMyWork(${i})">
         <div class="work-info-part">
           <span class="work-title-h">${escapeHtml(w.title || '(제목 없음)')}</span>
           <span class="work-subtitle-meta">주제: ${escapeHtml(topicMap[w.topic_id] || w.topic_id)} | 작성일: ${new Date(w.updated_at).toLocaleDateString()} ${stars}</span>
@@ -795,7 +795,7 @@ function openMyWork(idx) {
   }
 
   const btnWrap = document.getElementById('my-modal-edit-btn-wrap');
-  btnWrap.innerHTML = `<button class="btn-spotify" onclick="goEditFromModal('${w.topic_id}', '${escapeHtml(topicMap[w.topic_id])}')">✏️ 수정하러 가기</button>`;
+  btnWrap.innerHTML = `<button class="btn-spotify" onclick="window.goEditFromModal('${w.topic_id}', '${escapeHtml(topicMap[w.topic_id])}')">✏️ 수정하러 가기</button>`;
 
   document.getElementById('modal-my-work').style.display = 'flex';
 }
