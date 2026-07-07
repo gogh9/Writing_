@@ -53,7 +53,7 @@ const DB = {
       }
 
       // Check if it's the configured teacher email
-      const teacherEmail = localStorage.getItem('teacher_email') || '';
+      const teacherEmail = localStorage.getItem('teacher_email') || 'gogh9@susake.sen.es.kr';
       if (teacherEmail === email) {
         return { valid: true, name: '선생님', isTeacher: true };
       }
@@ -1526,7 +1526,7 @@ function loadTeacherSettingsInputs() {
   document.getElementById('setting-openai-key').value = apiKey;
 
   // Teacher email config
-  const teacherEmail = localStorage.getItem('teacher_email') || '';
+  const teacherEmail = localStorage.getItem('teacher_email') || 'gogh9@susake.sen.es.kr';
   document.getElementById('setting-auth-list').value = teacherEmail;
 }
 
