@@ -584,7 +584,7 @@ textarea.form-control {
 .editor-refine-wrapper {
   display: flex;
   gap: 20px;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .editor-refine-wrapper .editor-card {
@@ -611,6 +611,9 @@ textarea.form-control {
   border-radius: 8px;
   padding: 24px;
   box-shadow: var(--shadow-medium);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .refine-side-panel .ai-panel-title {
@@ -631,7 +634,7 @@ textarea.form-control {
   font-size: 14px;
   line-height: 1.8;
   white-space: pre-wrap;
-  max-height: 460px;
+  flex: 1;
   overflow-y: auto;
   /* Prevent copy */
   user-select: none;
