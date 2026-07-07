@@ -1016,17 +1016,16 @@ async function submitWork() {
 }
 
 async function handleAICallClientSide(methodName, args, runner) {
-  const apiKey = localStorage.getItem('openai_api_key') || '';
+  const apiKey = localStorage.getItem('gemini_api_key') || '';
   if (!apiKey) {
-    runner._failure('OpenAI API Key가 설정되지 않았습니다. 교사 설정에서 API Key를 입력해주세요.');
-    showToast('OpenAI API Key가 설정되지 않았습니다. 교사 설정에서 입력해주세요.', 'error');
+    runner._failure('Gemini API Key가 설정되지 않았습니다. 교사 설정에서 API Key를 입력해주세요.');
+    showToast('Gemini API Key가 설정되지 않았습니다. 교사 설정에서 입력해주세요.', 'error');
     return;
   }
 
   try {
     let systemPrompt = '';
     let userPrompt = '';
-    let responseFormatType = 'json_object';
 
     if (methodName === 'checkSpelling') {
       const text = args[0];
@@ -1040,26 +1039,26 @@ async function handleAICallClientSide(methodName, args, runner) {
       throw new Error(`지원하지 않는 AI 메서드입니다: ${methodName}`);
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const requestBody = {
+      contents: [{
+        parts: [{ text: `System: ${systemPrompt}\nUser: ${userPrompt}` }]
+      }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: methodName === 'checkSpelling' ? 0.0 : 0.7
+      }
+    };
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: methodName === 'checkSpelling' ? 0 : 0.7,
-        max_tokens: 1500,
-        response_format: { type: responseFormatType }
-      })
+      body: JSON.stringify(requestBody)
     });
 
-    if (response.status === 401) {
-      runner._failure('API 키가 잘못되었습니다.');
+    if (response.status === 400 || response.status === 401 || response.status === 403) {
+      runner._failure('API 키가 잘못되었거나 요청이 올바르지 않습니다.');
       return;
     }
     if (response.status === 429) {
@@ -1072,7 +1071,7 @@ async function handleAICallClientSide(methodName, args, runner) {
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content.trim();
+    const content = data.candidates[0].content.parts[0].text.trim();
     const result = JSON.parse(content);
 
     if (methodName === 'checkSpelling') {
@@ -1791,8 +1790,8 @@ function loadTeacherSettingsInputs() {
     document.getElementById('setting-student-list').value = listText;
   });
 
-  const apiKey = localStorage.getItem('openai_api_key') || '';
-  document.getElementById('setting-openai-key').value = apiKey;
+  const apiKey = localStorage.getItem('gemini_api_key') || '';
+  document.getElementById('setting-gemini-key').value = apiKey;
 
   // Teacher email config
   const teacherEmail = localStorage.getItem('teacher_email') || 'gogh9@susaek.sen.es.kr';
@@ -1800,9 +1799,9 @@ function loadTeacherSettingsInputs() {
 }
 
 window.saveSettings = function () {
-  const key = document.getElementById('setting-openai-key').value.trim();
-  localStorage.setItem('openai_api_key', key);
-  showToast('OpenAI API Key 설정이 저장되었습니다.', 'success');
+  const key = document.getElementById('setting-gemini-key').value.trim();
+  localStorage.setItem('gemini_api_key', key);
+  showToast('Gemini API Key 설정이 저장되었습니다.', 'success');
 };
 
 window.saveStudentsConfig = async function () {
