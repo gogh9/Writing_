@@ -1306,16 +1306,16 @@ textarea.form-control {
         
         <div class="card">
           <!-- Grid: left = selects (same width), right = button -->
-          <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; max-width: 480px;">
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <select id="teacher-topic-select-dropdown" class="form-control" style="border-radius: 8px; width: 100%; font-size: 14px; padding: 8px 14px;" onchange="window.onTeacherSelectTopic(this.value)">
+          <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; width: 100%;">
+            <div style="display: flex; flex-direction: column; gap: 12px; flex: 1; max-width: 600px;">
+              <select id="teacher-topic-select-dropdown" class="form-control" style="border-radius: 8px; width: 100%; font-size: 16px; padding: 14px 16px;" onchange="window.onTeacherSelectTopic(this.value)">
                 <!-- Dynamic -->
               </select>
-              <select id="teacher-student-select-dropdown" class="form-control" style="border-radius: 8px; width: 100%; font-size: 14px; padding: 8px 14px; margin-bottom: 0;" onchange="window.onTeacherSelectStudent(this.value)">
+              <select id="teacher-student-select-dropdown" class="form-control" style="border-radius: 8px; width: 100%; font-size: 16px; padding: 14px 16px; margin-bottom: 0;" onchange="window.onTeacherSelectStudent(this.value)">
                 <!-- Dynamic -->
               </select>
             </div>
-            <button class="btn-spotify" style="padding: 8px 14px; font-size: 13px; white-space: nowrap;" onclick="window.toggleAddTopicForm()">➕ 주제 추가</button>
+            <button class="btn-spotify" style="padding: 14px 20px; font-size: 15px; white-space: nowrap; height: fit-content;" onclick="window.toggleAddTopicForm()">➕ 주제 추가</button>
           </div>
 
           <!-- Inline add-topic form (hidden by default) -->
