@@ -321,6 +321,31 @@ const DB = {
     }
   },
 
+  async deleteStudentWork(studentEmail, topicId) {
+    if (!this.isSupabaseConfigured()) {
+      const db = JSON.parse(localStorage.getItem('student_works')) || {};
+      const localName = studentEmail.split('@')[0];
+      if (db[localName]) {
+        db[localName] = db[localName].filter(w => w.topicId !== topicId);
+        localStorage.setItem('student_works', JSON.stringify(db));
+      }
+      return { success: true, message: '로컬에서 글이 삭제되었습니다.' };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('works')
+        .delete()
+        .eq('student_email', studentEmail)
+        .eq('topic_id', topicId);
+
+      if (error) throw error;
+      return { success: true, message: '글이 성공적으로 삭제되었습니다.' };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  },
+
   async getTopWorksByTopic(topicId) {
     if (!this.isSupabaseConfigured()) {
       return [];
@@ -398,7 +423,7 @@ const DB = {
     }
   },
 
-  async teacherFeedback(studentEmail, topicId, feedback, newStatus, editedContent, star) {
+  async teacherFeedback(studentEmail, topicId, feedback, newStatus, editedContent, star, editedTitle) {
     if (!this.isSupabaseConfigured()) {
       return { success: false, message: 'Supabase가 설정되지 않았습니다.' };
     }
@@ -412,6 +437,9 @@ const DB = {
       };
       if (editedContent) {
         payload.content = editedContent;
+      }
+      if (editedTitle) {
+        payload.title = editedTitle;
       }
 
       const { error } = await supabase
@@ -489,6 +517,7 @@ async function handleUserSession(session) {
       switchTeacherTab('overview');
       showPage('teacher');
       loadTopicsForTeacher();
+      loadStudentsForTeacher();
     } else {
       currentUser = reg.name;
       currentRole = 'student';
@@ -800,7 +829,10 @@ function openMyWork(idx) {
   }
 
   const btnWrap = document.getElementById('my-modal-edit-btn-wrap');
-  btnWrap.innerHTML = `<button class="btn-spotify" onclick="window.goEditFromModal('${w.topic_id}')">✏️ 수정하러 가기</button>`;
+  btnWrap.innerHTML = `
+    <button class="btn-spotify" onclick="window.goEditFromModal('${w.topic_id}')">✏️ 수정하러 가기</button>
+    <button class="btn-spotify-danger" style="margin-left: 8px; padding: 14px 28px; border-radius: 500px; font-weight: 700; border: none; font-size: 14px;" onclick="window.deleteMyWork('${w.topic_id}')">🗑️ 삭제하기</button>
+  `;
 
   document.getElementById('modal-my-work').style.display = 'flex';
 }
@@ -808,6 +840,26 @@ function openMyWork(idx) {
 function goEditFromModal(topicId) {
   closeMyModal();
   selectTopic(topicId);
+}
+
+async function deleteMyWork(topicId) {
+  if (!confirm('이 글을 정말 삭제하시겠습니까?')) return;
+
+  showLoading(true);
+  const res = await DB.deleteStudentWork(currentUserEmail, topicId);
+  showLoading(false);
+
+  if (res.success) {
+    showToast('🗑️ 글이 성공적으로 삭제되었습니다.', 'success');
+    closeMyModal();
+    // Refresh student works cache and UI
+    const works = await DB.getStudentWorks(currentUserEmail);
+    window._cachedWorks = works;
+    renderWorksFromCache();
+    renderTopicsFromCache();
+  } else {
+    showToast(res.message, 'error');
+  }
 }
 
 function closeMyModal() {
@@ -1191,13 +1243,15 @@ window.switchTeacherTab = function (tab) {
 
 async function loadTopicsForTeacher() {
   const topics = await DB.getTopicList();
+  window._cachedTopics = topics;
   const select = document.getElementById('teacher-topic-select-dropdown');
+  if (!select) return;
   if (!topics || topics.length === 0) {
     select.innerHTML = '<option value="">선택할 주제가 없습니다.</option>';
     return;
   }
 
-  let html = '<option value="">-- 주제를 선택하세요 --</option>';
+  let html = '<option value="">주제를 선택하세요</option>';
   topics.forEach(t => {
     html += `<option value="${t.id}">${escapeHtml(t.title)}</option>`;
   });
@@ -1208,22 +1262,156 @@ async function loadTopicsForTeacher() {
   }
 }
 
+async function loadStudentsForTeacher() {
+  const students = await DB.getStudentList();
+  const select = document.getElementById('teacher-student-select-dropdown');
+  if (!select) return;
+
+  if (!students || students.length === 0) {
+    select.innerHTML = '<option value="">선택할 학생이 없습니다.</option>';
+    return;
+  }
+
+  // Sort by name alphabetically
+  students.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+
+  let html = '<option value="">학생을 선택하세요</option>';
+  students.forEach(s => {
+    html += `<option value="${s.email}">${escapeHtml(s.name)}</option>`;
+  });
+  select.innerHTML = html;
+}
+
 window.onTeacherSelectTopic = function (topicId) {
   if (!topicId) {
     document.getElementById('teacher-overview-content').style.display = 'none';
     return;
   }
+
+  // Reset student select dropdown
+  const studentSelect = document.getElementById('teacher-student-select-dropdown');
+  if (studentSelect) studentSelect.value = '';
+
   currentTeacherTopicId = topicId;
   const select = document.getElementById('teacher-topic-select-dropdown');
   const title = select.options[select.selectedIndex].text;
 
-  document.getElementById('overview-title').textContent = `👥 ${title} - 진행 상태`;
+  document.getElementById('overview-title').textContent = title;
   document.getElementById('teacher-overview-content').style.display = 'block';
+
+  // Toggle sections
+  document.getElementById('teacher-stats').style.display = 'grid';
+  document.getElementById('teacher-student-grid').style.display = 'grid';
+  document.getElementById('teacher-student-works-list').style.display = 'none';
+
   loadSubmissionsForTopic(topicId);
 };
 
+window.onTeacherSelectStudent = async function (email) {
+  if (!email) {
+    document.getElementById('teacher-overview-content').style.display = 'none';
+    return;
+  }
+
+  // Reset topic dropdown
+  currentTeacherTopicId = null;
+  const topicSelect = document.getElementById('teacher-topic-select-dropdown');
+  if (topicSelect) topicSelect.value = '';
+
+  const select = document.getElementById('teacher-student-select-dropdown');
+  const studentNameText = select.options[select.selectedIndex].text;
+
+  document.getElementById('overview-title').textContent = studentNameText;
+  document.getElementById('teacher-overview-content').style.display = 'block';
+
+  // Toggle sections
+  document.getElementById('teacher-stats').style.display = 'none';
+  document.getElementById('teacher-student-grid').style.display = 'none';
+  
+  const worksContainer = document.getElementById('teacher-student-works-list');
+  worksContainer.style.display = 'block';
+  worksContainer.innerHTML = '';
+
+  showLoading(true);
+  let works = await DB.getStudentWorks(email);
+  showLoading(false);
+
+  // Keep only the latest submission per topic
+  works.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  const latestWorksMap = new Map();
+  works.forEach(w => {
+    if (!latestWorksMap.has(w.topic_id)) {
+      latestWorksMap.set(w.topic_id, w);
+    }
+  });
+  works = Array.from(latestWorksMap.values());
+
+  // Store in global/window variable so window.openStudentWork can access it
+  window._submissions = works.map(w => ({
+    email: w.student_email,
+    name: w.student_name,
+    title: w.title,
+    content: w.content,
+    status: w.status,
+    date: w.updated_at ? new Date(w.updated_at).toLocaleDateString() : '',
+    feedback: w.feedback,
+    star: w.star,
+    topic_id: w.topic_id
+  }));
+
+  if (works.length === 0) {
+    worksContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px 0;">아직 작성한 글이 없습니다.</div>';
+    return;
+  }
+
+  const topics = window._cachedTopics || [];
+  const topicMap = {};
+  topics.forEach(t => topicMap[t.id] = t.title);
+
+  let html = '';
+  window._submissions.forEach((s, idx) => {
+    let badgeClass = 'badge-none';
+    if (s.status === '임시저장') badgeClass = 'badge-draft';
+    if (s.status === '제출완료') badgeClass = 'badge-submitted';
+    if (s.status === '과제완료') badgeClass = 'badge-done';
+    if (s.status === '수정요청') badgeClass = 'badge-revise';
+
+    let stars = s.star > 0 ? `<span style="color: var(--color-warning); margin-left: 8px;">${'★'.repeat(s.star)}</span>` : '';
+
+    const topicTitle = topicMap[s.topic_id] || s.topic_id;
+
+    html += `
+      <div class="work-row" onclick="window.openStudentWork(${idx})" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 16px; margin-bottom: 12px; background-color: var(--bg-interactive); border-radius: 8px; border: 1px solid var(--border-light); transition: border-color 0.2s, background-color 0.2s;" onmouseover="this.style.borderColor='var(--spotify-green)'; this.style.backgroundColor='rgba(29, 185, 84, 0.05)';" onmouseout="this.style.borderColor='var(--border-light)'; this.style.backgroundColor='var(--bg-interactive)';">
+        <div style="flex: 1; min-width: 0; padding-right: 24px; text-align: left; display: flex; align-items: center; gap: 24px;">
+          <div style="font-size: 13px; font-weight: 700; color: var(--spotify-green); width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(topicTitle)}">
+            ${escapeHtml(topicTitle)}
+          </div>
+          <div style="flex: 1; min-width: 0; font-size: 16px; font-weight: 700; color: var(--text-base); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${escapeHtml(s.title || '(제목 없음)')}
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); min-width: 150px; text-align: right; white-space: nowrap;">
+            작성일: ${s.date} ${stars}
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span class="badge ${badgeClass}">${s.status}</span>
+          <button class="btn-spotify" style="padding: 8px 16px; font-size: 13px;" onclick="window.openStudentWork(${idx})">🔍 피드백/채점</button>
+        </div>
+      </div>
+    `;
+  });
+  worksContainer.innerHTML = html;
+};
+
 window.reloadSubmissions = function () {
-  if (currentTeacherTopicId) loadSubmissionsForTopic(currentTeacherTopicId);
+  if (currentTeacherTopicId) {
+    loadSubmissionsForTopic(currentTeacherTopicId);
+  } else {
+    const studentSelect = document.getElementById('teacher-student-select-dropdown');
+    if (studentSelect && studentSelect.value) {
+      window.onTeacherSelectStudent(studentSelect.value);
+    }
+  }
 };
 
 async function loadSubmissionsForTopic(topicId) {
@@ -1253,12 +1441,12 @@ function renderStats(submissions) {
       <div class="stat-title">전체 학생</div>
     </div>
     <div class="stat-item">
-      <div class="stat-value" style="color: var(--color-info);">${submitted}</div>
-      <div class="stat-title">제출완료</div>
-    </div>
-    <div class="stat-item">
       <div class="stat-value" style="color: var(--spotify-green);">${done}</div>
       <div class="stat-title">과제완료</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" style="color: var(--color-info);">${submitted}</div>
+      <div class="stat-title">제출완료</div>
     </div>
     <div class="stat-item">
       <div class="stat-value" style="color: var(--color-warning);">${revise}</div>
@@ -1273,16 +1461,15 @@ function renderStats(submissions) {
 
 function renderStudentGrid(submissions) {
   const grid = document.getElementById('teacher-student-grid');
-  if (submissions.length === 0) {
-    grid.innerHTML = '<div style="text-align: center; color: var(--text-muted);">학생 목록이 비어있습니다.</div>';
-    return;
-  }
+  if (!grid) return;
 
-  const avatars = ['🐱', '🦊', '🐹', '🐶', '🦁', '🐼', '🐰', '🐸', '🐨', '🐙', '🦄', '🐬', '🐝', '🐳', '🦩', '🦚', '🦜'];
-  function getAvatar(name) {
-    let code = 0;
-    for (let c = 0; c < name.length; c++) code += name.charCodeAt(c);
-    return avatars[code % avatars.length];
+  grid.style.display = 'flex';
+  grid.style.flexDirection = 'column';
+  grid.style.gap = '8px';
+
+  if (submissions.length === 0) {
+    grid.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0;">학생 목록이 비어있습니다.</div>';
+    return;
   }
 
   let html = '';
@@ -1292,14 +1479,34 @@ function renderStudentGrid(submissions) {
     if (s.status === '과제완료') cls = 'done';
     if (s.status === '수정요청') cls = 'revise';
 
-    let stars = s.star > 0 ? `<div style="color: var(--color-warning); font-size:12px; margin-top: 4px;">${'★'.repeat(s.star)}</div>` : '';
+    let badgeClass = 'badge-none';
+    if (s.status === '임시저장') badgeClass = 'badge-draft';
+    if (s.status === '제출완료') badgeClass = 'badge-submitted';
+    if (s.status === '과제완료') badgeClass = 'badge-done';
+    if (s.status === '수정요청') badgeClass = 'badge-revise';
+
+    let stars = s.star > 0 ? `<span style="color: var(--color-warning); font-size: 14px; margin-left: 8px;">${'★'.repeat(s.star)}</span>` : '';
+
+    let titleHtml = '';
+    if (s.status !== '미작성') {
+      titleHtml = `<span style="font-size: 16px; font-weight: 700; color: var(--text-base);">${escapeHtml(s.title || '(제목 없음)')}</span>`;
+    } else {
+      titleHtml = `<span style="color: var(--text-muted); font-style: italic;">아직 글을 작성하지 않았습니다.</span>`;
+    }
 
     html += `
-      <div class="student-card ${cls}" onclick="window.openStudentWork(${idx})">
-        <div class="student-avatar">${getAvatar(s.name)}</div>
-        <div class="student-name-text">${escapeHtml(s.name)}</div>
-        ${statusBadgeHTML(s.status)}
-        ${stars}
+      <div class="work-row" onclick="window.openStudentWork(${idx})" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 16px; background-color: var(--bg-interactive); border-radius: 8px; border: 1px solid var(--border-light); margin-bottom: 0; transition: border-color 0.2s, background-color 0.2s;" onmouseover="this.style.borderColor='var(--spotify-green)'; this.style.backgroundColor='rgba(29, 185, 84, 0.05)';" onmouseout="this.style.borderColor='var(--border-light)'; this.style.backgroundColor='var(--bg-interactive)';">
+        <div style="flex: 1; min-width: 0; padding-right: 16px; text-align: left; display: flex; align-items: center; gap: 24px;">
+          <div style="font-size: 16px; font-weight: 700; color: var(--text-base); min-width: 80px;">${escapeHtml(s.name)}</div>
+          <div style="flex: 1; min-width: 0; font-size: 14px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${titleHtml}
+          </div>
+          ${stars}
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span class="badge ${badgeClass}">${s.status}</span>
+          <button class="btn-spotify" style="padding: 8px 16px; font-size: 13px;" onclick="window.openStudentWork(${idx})">🔍 피드백/채점</button>
+        </div>
       </div>
     `;
   });
@@ -1329,6 +1536,32 @@ window.openStudentWork = function (idx) {
   currentStar = s.star || 0;
   renderStarInput(currentStar);
 
+  // Show/Hide feedback input and buttons based on status
+  const isCompleted = s.status === '과제완료';
+  const feedbackGroup = document.getElementById('modal-feedback').closest('.form-group');
+  const footer = document.querySelector('#modal-student-work .modal-footer');
+
+  const btnCancel = document.getElementById('modal-btn-cancel');
+  const btnRevise = document.getElementById('modal-btn-revise');
+  const btnDone = document.getElementById('modal-btn-done');
+  const btnSave = document.getElementById('modal-btn-save');
+
+  if (isCompleted) {
+    if (feedbackGroup) feedbackGroup.style.display = 'none';
+    if (footer) footer.style.display = 'flex';
+    if (btnCancel) btnCancel.style.display = 'block';
+    if (btnRevise) btnRevise.style.display = 'none';
+    if (btnDone) btnDone.style.display = 'none';
+    if (btnSave) btnSave.style.display = 'block';
+  } else {
+    if (feedbackGroup) feedbackGroup.style.display = 'block';
+    if (footer) footer.style.display = 'flex';
+    if (btnCancel) btnCancel.style.display = 'block';
+    if (btnRevise) btnRevise.style.display = 'block';
+    if (btnDone) btnDone.style.display = 'block';
+    if (btnSave) btnSave.style.display = 'none';
+  }
+
   document.getElementById('modal-student-work').style.display = 'flex';
 };
 
@@ -1351,12 +1584,15 @@ window.closeModal = function () {
 window.sendFeedback = async function (status) {
   if (!selectedStudentData) return;
   const feedback = document.getElementById('modal-feedback').value.trim();
-  const editedContent = document.getElementById('modal-edit-content').value.trim();
+  const editedContent = document.getElementById('modal-student-content').innerText.trim();
+  const editedTitleText = document.getElementById('modal-student-title').innerText.trim();
 
   const content = editedContent !== selectedStudentData.content ? editedContent : '';
+  const editedTitle = editedTitleText !== (selectedStudentData.title || '') ? editedTitleText : '';
 
   showLoading(true);
-  const res = await DB.teacherFeedback(selectedStudentData.email, currentTeacherTopicId, feedback, status, content, currentStar);
+  const topicId = selectedStudentData.topic_id || currentTeacherTopicId;
+  const res = await DB.teacherFeedback(selectedStudentData.email, topicId, feedback, status, content, currentStar, editedTitle);
   showLoading(false);
 
   closeModal();
@@ -1409,6 +1645,37 @@ window.addTopic = async function () {
     showToast('주제가 새로 등록되었습니다.', 'success');
     document.getElementById('new-topic-title').value = '';
     document.getElementById('new-topic-guide').value = '';
+    loadTopicsForManage();
+    loadTopicsForTeacher();
+  } else {
+    showToast(res.message, 'error');
+  }
+};
+
+window.toggleAddTopicForm = function () {
+  const form = document.getElementById('inline-add-topic-form');
+  if (!form) return;
+  const visible = form.style.display !== 'none';
+  form.style.display = visible ? 'none' : 'block';
+  if (!visible) {
+    document.getElementById('inline-topic-title').focus();
+  }
+};
+
+window.addTopicInline = async function () {
+  const title = document.getElementById('inline-topic-title').value.trim();
+  const guide = document.getElementById('inline-topic-guide').value.trim();
+  if (!title) { showToast('주제 제목을 입력해주세요!', 'error'); return; }
+
+  showLoading(true);
+  const res = await DB.addTopic(title, guide);
+  showLoading(false);
+
+  if (res.success) {
+    showToast('주제가 새로 등록되었습니다.', 'success');
+    document.getElementById('inline-topic-title').value = '';
+    document.getElementById('inline-topic-guide').value = '';
+    document.getElementById('inline-add-topic-form').style.display = 'none';
     loadTopicsForManage();
     loadTopicsForTeacher();
   } else {
@@ -1563,6 +1830,9 @@ window.saveStudentsConfig = async function () {
   const res = await DB.saveStudentList(studentsArray);
   showLoading(false);
   showToast(res.message, res.success ? 'success' : 'error');
+  if (res.success) {
+    loadStudentsForTeacher();
+  }
 };
 
 window.saveAuthConfig = function () {
@@ -1641,6 +1911,7 @@ window.importDataJSON = async function (input) {
       showToast('✅ 데이터 복구가 완료되었습니다.', 'success');
       loadTeacherSettingsInputs();
       loadTopicsForTeacher();
+      loadStudentsForTeacher();
     } catch (err) {
       showLoading(false);
       showToast('올바르지 않은 JSON 파일입니다.', 'error');
@@ -1708,9 +1979,35 @@ document.addEventListener('DOMContentLoaded', () => {
   // Modal stars click bindings
   const stars = document.querySelectorAll('#modal-star-input .star-interactive');
   stars.forEach(star => {
-    star.addEventListener('click', () => {
-      currentStar = parseInt(star.getAttribute('data-val'));
+    star.addEventListener('click', async () => {
+      const val = parseInt(star.getAttribute('data-val'));
+      currentStar = val;
       renderStarInput(currentStar);
+
+      if (!selectedStudentData) return;
+
+      // Only auto-save on click if the status is already '과제완료'
+      if (selectedStudentData.status === '과제완료') {
+        showLoading(true);
+        const topicId = selectedStudentData.topic_id || currentTeacherTopicId;
+        
+        const editedContent = document.getElementById('modal-student-content').innerText.trim();
+        const content = editedContent !== selectedStudentData.content ? editedContent : '';
+
+        const editedTitleText = document.getElementById('modal-student-title').innerText.trim();
+        const editedTitle = editedTitleText !== (selectedStudentData.title || '') ? editedTitleText : '';
+        
+        const res = await DB.teacherFeedback(selectedStudentData.email, topicId, '', '과제완료', content, val, editedTitle);
+        showLoading(false);
+
+        if (res.success) {
+          showToast('별점 평가가 완료되었습니다.', 'success');
+          closeModal();
+          reloadSubmissions();
+        } else {
+          showToast(res.message, 'error');
+        }
+      }
     });
   });
 
@@ -1819,6 +2116,7 @@ window.closeRefine = closeRefine;
 window.selectTopic = selectTopic;
 window.openMyWork = openMyWork;
 window.goEditFromModal = goEditFromModal;
+window.deleteMyWork = deleteMyWork;
 
 // Global Helpers
 function escapeHtml(str) {

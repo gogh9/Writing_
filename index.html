@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>우리 반 글쓰기 - Spotify Edition</title>
+<title>우리 반 글쓰기</title>
 <!-- Google Fonts: Inter and Noto Sans KR -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet"/>
 <style>
@@ -1215,7 +1215,7 @@ textarea.form-control {
       
       <!-- Sub view: Topic List selection -->
       <div id="view-topic-list">
-        <h2 class="section-title">📌 오늘 나의 주제는 무엇인가요?</h2>
+        <h2 class="section-title">📌 오늘의 주제는?</h2>
         <div class="topic-grid" id="student-topic-list">
           <!-- Rendered dynamically -->
         </div>
@@ -1309,11 +1309,32 @@ textarea.form-control {
       <div id="teacher-tab-overview">
         
         <div class="card">
-          <div class="form-group">
-            <label class="form-label">주제 선택</label>
-            <select id="teacher-topic-select-dropdown" class="form-control" style="border-radius: 8px;" onchange="window.onTeacherSelectTopic(this.value)">
-              <!-- Dynamic -->
-            </select>
+          <!-- Grid: left = selects (same width), right = button -->
+          <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <select id="teacher-topic-select-dropdown" class="form-control" style="border-radius: 8px; width: 100%; font-size: 14px; padding: 8px 14px;" onchange="window.onTeacherSelectTopic(this.value)">
+                <!-- Dynamic -->
+              </select>
+              <select id="teacher-student-select-dropdown" class="form-control" style="border-radius: 8px; width: 100%; font-size: 14px; padding: 8px 14px; margin-bottom: 0;" onchange="window.onTeacherSelectStudent(this.value)">
+                <!-- Dynamic -->
+              </select>
+            </div>
+            <button class="btn-spotify" style="padding: 8px 14px; font-size: 13px; white-space: nowrap;" onclick="window.toggleAddTopicForm()">➕ 주제 추가</button>
+          </div>
+
+          <!-- Inline add-topic form (hidden by default) -->
+          <div id="inline-add-topic-form" style="display: none; background: var(--bg-elevated); border-radius: 10px; padding: 16px; margin-top: 12px; border: 1px solid var(--border-gray);">
+            <h4 style="margin: 0 0 12px 0; font-size: 15px; color: var(--text-base);">새 주제 추가</h4>
+            <div class="form-group" style="margin-bottom: 10px;">
+              <input type="text" id="inline-topic-title" class="form-control" style="border-radius: 8px; font-size: 15px;" placeholder="주제 제목" />
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+              <textarea id="inline-topic-guide" class="form-control" rows="2" style="font-size: 14px;" placeholder="주제 안내 및 조건"></textarea>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-spotify" style="padding: 8px 20px; font-size: 14px;" onclick="window.addTopicInline()">등록</button>
+              <button style="padding: 8px 16px; font-size: 14px; background: var(--bg-interactive); color: var(--text-muted); border: 1px solid var(--border-gray); border-radius: 6px; cursor: pointer;" onclick="window.toggleAddTopicForm()">취소</button>
+            </div>
           </div>
         </div>
 
@@ -1323,12 +1344,15 @@ textarea.form-control {
           </div>
 
           <div class="card">
-            <div class="card-header-bar">
+            <div class="card-header-bar" style="display: none;">
               <h3 class="card-title-text" id="overview-title">학생별 진행 사항</h3>
               <button class="btn-spotify-secondary" onclick="window.reloadSubmissions()">🔄 새로고침</button>
             </div>
             <div class="student-grid" id="teacher-student-grid">
               <!-- Dynamic students -->
+            </div>
+            <div id="teacher-student-works-list" style="display: none; margin-top: 10px;">
+              <!-- Dynamic student works -->
             </div>
           </div>
         </div>
@@ -1485,21 +1509,20 @@ textarea.form-control {
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="modal-student-name">학생의 글</div>
-      <button class="modal-close" onclick="window.closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-left: auto; padding-right: 12px;">
         <div id="modal-student-badge"></div>
         <span style="font-size: 13px; color: var(--text-muted);" id="modal-student-date"></span>
       </div>
+      <button class="modal-close" onclick="window.closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div contenteditable="true" style="font-size: 20px; font-weight: 700; text-align: center; margin-top: -12px; margin-bottom: 16px; outline: none; transition: border-bottom-color 0.2s; border-bottom: 2px solid transparent;" onfocus="this.style.borderBottomColor='var(--spotify-green)';" onblur="this.style.borderBottomColor='transparent';" id="modal-student-title"></div>
       
-      <div style="font-size: 18px; font-weight: 700; margin-bottom: 12px;" id="modal-student-title"></div>
+      <div class="ai-box" contenteditable="true" style="min-height: 120px; max-height: 240px; overflow-y: auto; margin-bottom: 24px; transition: border-color 0.2s; outline: none;" onfocus="this.style.borderColor='var(--spotify-green)';" onblur="this.style.borderColor='var(--border-gray)';" id="modal-student-content"></div>
       
-      <div class="ai-box" style="min-height: 120px; max-height: 240px; overflow-y: auto; margin-bottom: 24px;" id="modal-student-content"></div>
-      
-      <div class="form-group">
-        <label class="form-label">⭐ 별점 평가 (우수작 척도)</label>
-        <div class="modal-stars" id="modal-star-input">
+      <div class="form-group" style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+        <label class="form-label" style="margin-bottom: 0;">⭐ 별점 평가</label>
+        <div class="modal-stars" id="modal-star-input" style="margin: 0;">
           <span class="star-interactive" data-val="1">★</span>
           <span class="star-interactive" data-val="2">★</span>
           <span class="star-interactive" data-val="3">★</span>
@@ -1508,20 +1531,21 @@ textarea.form-control {
         </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">👩‍🏫 교사의 따뜻한 한마디 (피드백)</label>
+      <div class="form-group" style="display: none;">
+        <label class="form-label">👩‍🏫 수정할 내용</label>
         <textarea id="modal-feedback" class="form-control" rows="3" placeholder="학생에게 전달할 피드백 내용을 적어주세요."></textarea>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" style="display: none;">
         <label class="form-label">✏️ 내용 직접 교정하기 (선택 사항)</label>
         <textarea id="modal-edit-content" class="form-control" rows="6" placeholder="학생이 쓴 글 내용 중 수정이 필요한 부분이 있다면 고쳐주세요."></textarea>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-spotify-secondary" onclick="window.closeModal()">취소</button>
-      <button class="btn-spotify-secondary" style="border-color: var(--color-warning); color: var(--color-warning);" onclick="window.sendFeedback('수정요청')">🔄 수정 요청</button>
-      <button class="btn-spotify" onclick="window.sendFeedback('과제완료')">✅ 완료 처리</button>
+      <button class="btn-spotify-secondary" id="modal-btn-cancel" onclick="window.closeModal()">취소</button>
+      <button class="btn-spotify-secondary" id="modal-btn-revise" style="border-color: var(--color-warning); color: var(--color-warning);" onclick="window.sendFeedback('수정요청')">🔄 수정 요청</button>
+      <button class="btn-spotify" id="modal-btn-done" onclick="window.sendFeedback('과제완료')">✅ 완료 처리</button>
+      <button class="btn-spotify" id="modal-btn-save" style="display: none;" onclick="window.sendFeedback('과제완료')">💾 저장</button>
     </div>
   </div>
 </div>
