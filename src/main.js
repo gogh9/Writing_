@@ -795,11 +795,7 @@ function openMyWork(idx) {
   }
 
   const btnWrap = document.getElementById('my-modal-edit-btn-wrap');
-  if (w.status === '수정요청' || w.status === '임시저장') {
-    btnWrap.innerHTML = `<button class="btn-spotify" onclick="goEditFromModal('${w.topic_id}', '${escapeHtml(topicMap[w.topic_id])}')">✏️ 수정하러 가기</button>`;
-  } else {
-    btnWrap.innerHTML = '';
-  }
+  btnWrap.innerHTML = `<button class="btn-spotify" onclick="goEditFromModal('${w.topic_id}', '${escapeHtml(topicMap[w.topic_id])}')">✏️ 수정하러 가기</button>`;
 
   document.getElementById('modal-my-work').style.display = 'flex';
 }
@@ -948,7 +944,7 @@ async function submitWork() {
   if (!title) { showToast('제목을 입력해주세요!', 'error'); return; }
   if (!content || content.length < 30) { showToast('글 내용을 30자 이상 작성해주세요!', 'error'); return; }
 
-  if (!confirm('선생님께 글을 제출할까요? 제출한 글은 피드백 전까지 수정할 수 없습니다.')) return;
+  if (!confirm('선생님께 글을 제출할까요?')) return;
 
   showLoading(true);
   const res = await DB.saveStudentWork(currentUserEmail, currentUser, selectedTopicId, title, content, '제출완료');
