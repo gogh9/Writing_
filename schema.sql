@@ -11,7 +11,7 @@ ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
 
 -- Allow public select (for parent logins) and authenticated users read
 CREATE POLICY "Allow public select on students" ON public.students FOR SELECT USING (true);
-CREATE POLICY "Allow admin edit on students" ON public.students FOR ALL USING (true);
+CREATE POLICY "Allow admin edit on students" ON public.students FOR ALL USING (auth.jwt() ->> 'email' = 'gogh9@susaek.sen.es.kr');
 
 -- 2. Create topics table
 CREATE TABLE IF NOT EXISTS public.topics (
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.topics (
 
 ALTER TABLE public.topics ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read on topics" ON public.topics FOR SELECT USING (true);
-CREATE POLICY "Allow admin edit on topics" ON public.topics FOR ALL USING (true);
+CREATE POLICY "Allow admin edit on topics" ON public.topics FOR ALL USING (auth.jwt() ->> 'email' = 'gogh9@susaek.sen.es.kr');
 
 -- 3. Create works table
 CREATE TABLE IF NOT EXISTS public.works (
@@ -60,7 +60,7 @@ CREATE POLICY "Allow teacher and parent read all works" ON public.works
 
 -- Allow teacher to insert/update reviews
 CREATE POLICY "Allow teacher modify reviews" ON public.works
-    FOR ALL USING (true);
+    FOR ALL USING (auth.jwt() ->> 'email' = 'gogh9@susaek.sen.es.kr');
 
 -- Populate default mock data
 INSERT INTO public.topics (id, title, guide, date) VALUES
