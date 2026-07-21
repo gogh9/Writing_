@@ -1662,6 +1662,30 @@ textarea.form-control {
   </div>
 </div>
 
+<!-- 3. Student Topic Works Choice Modal -->
+<div id="modal-topic-works" class="modal-overlay" onclick="if(event.target===this)window.closeTopicWorksModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="topic-works-modal-title">주제 글 선택</div>
+      <button class="modal-close" onclick="window.closeTopicWorksModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;" id="topic-works-modal-guide"></p>
+      
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+        <button class="btn-spotify" id="btn-create-new-work">➕ 새 글 쓰기</button>
+      </div>
+
+      <div class="work-list" id="topic-works-list-container">
+        <!-- List of works for this topic will be rendered here -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-spotify-secondary" onclick="window.closeTopicWorksModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- Bundled main bundle script -->
 <script type="module" src="/src/main.js"></script>
 </body>

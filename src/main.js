@@ -23,6 +23,7 @@ let currentTeacherTopicId = null;
 let currentStar = 0;
 let autoSaveTimer = null;
 let toastTimer = null;
+let currentWorkId = null;
 
 // =========================================================================
 // 2. DATABASE SERVICE LAYER (Supabase + LocalStorage Fallback)
@@ -260,38 +261,40 @@ const DB = {
     }
   },
 
-  async saveStudentWork(studentEmail, studentName, topicId, title, content, status) {
+  async saveStudentWork(studentEmail, studentName, topicId, title, content, status, workId = null) {
     if (!this.isSupabaseConfigured()) {
       const db = JSON.parse(localStorage.getItem('student_works')) || {};
       if (!db[studentName]) db[studentName] = [];
       const now = new Date().toLocaleString();
 
-      const idx = db[studentName].findIndex(w => w.topicId === topicId);
-      if (idx !== -1) {
-        db[studentName][idx].title = title;
-        db[studentName][idx].content = content;
-        db[studentName][idx].status = status;
-        // date는 최초 작성일을 유지 (교사 수정 시 변경 방지)
+      let targetId = workId;
+      if (targetId) {
+        const idx = db[studentName].findIndex(w => w.id === targetId);
+        if (idx !== -1) {
+          db[studentName][idx].title = title;
+          db[studentName][idx].content = content;
+          db[studentName][idx].status = status;
+          db[studentName][idx].updated_at = new Date().toISOString();
+        }
       } else {
+        targetId = 'local-' + Date.now();
         db[studentName].push({
-          topicId, title, content, status, date: now, feedback: '', star: 0
+          id: targetId,
+          topic_id: topicId,
+          title,
+          content,
+          status,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          feedback: '',
+          star: 0
         });
       }
       localStorage.setItem('student_works', JSON.stringify(db));
-      return { success: true, message: '로컬 임시저장되었습니다.' };
+      return { success: true, message: '로컬 임시저장되었습니다.', id: targetId };
     }
 
     try {
-      // Find existing work row
-      const { data: existing, error: selectErr } = await supabase
-        .from('works')
-        .select('id, feedback, star, spelling_log')
-        .eq('student_email', studentEmail)
-        .eq('topic_id', topicId)
-        .maybeSingle();
-
-      if (selectErr) throw selectErr;
-
       const payload = {
         student_email: studentEmail,
         student_name: studentName,
@@ -302,31 +305,35 @@ const DB = {
         updated_at: new Date().toISOString()
       };
 
-      if (existing) {
+      let activeId = workId;
+      if (activeId) {
         const { error: updateErr } = await supabase
           .from('works')
           .update(payload)
-          .eq('id', existing.id);
+          .eq('id', activeId);
         if (updateErr) throw updateErr;
       } else {
-        const { error: insertErr } = await supabase
+        const { data, error: insertErr } = await supabase
           .from('works')
-          .insert([payload]);
+          .insert([payload])
+          .select('id')
+          .single();
         if (insertErr) throw insertErr;
+        activeId = data.id;
       }
 
-      return { success: true, message: status === '제출완료' ? '제출되었습니다!' : '저장되었습니다!' };
+      return { success: true, message: status === '제출완료' ? '제출되었습니다!' : '저장되었습니다!', id: activeId };
     } catch (e) {
       return { success: false, message: e.message };
     }
   },
 
-  async deleteStudentWork(studentEmail, topicId) {
+  async deleteStudentWork(studentEmail, workId) {
     if (!this.isSupabaseConfigured()) {
       const db = JSON.parse(localStorage.getItem('student_works')) || {};
       const localName = studentEmail.split('@')[0];
       if (db[localName]) {
-        db[localName] = db[localName].filter(w => w.topicId !== topicId);
+        db[localName] = db[localName].filter(w => w.id !== workId);
         localStorage.setItem('student_works', JSON.stringify(db));
       }
       return { success: true, message: '로컬에서 글이 삭제되었습니다.' };
@@ -336,8 +343,7 @@ const DB = {
       const { error } = await supabase
         .from('works')
         .delete()
-        .eq('student_email', studentEmail)
-        .eq('topic_id', topicId);
+        .eq('id', workId);
 
       if (error) throw error;
       return { success: true, message: '글이 성공적으로 삭제되었습니다.' };
@@ -386,44 +392,59 @@ const DB = {
       const { data: works, error } = await supabase
         .from('works')
         .select('*')
-        .eq('topic_id', topicId);
+        .eq('topic_id', topicId)
+        .order('updated_at', { ascending: false });
 
       if (error) throw error;
 
-      return students.map(s => {
-        const work = works.find(w => w.student_email === s.email);
-        if (work) {
-          return {
+      const submissions = [];
+
+      // Add all existing works
+      works.forEach(w => {
+        const student = students.find(s => s.email === w.student_email);
+        submissions.push({
+          id: w.id,
+          name: student ? student.name : w.student_name,
+          email: w.student_email,
+          status: w.status,
+          title: w.title,
+          content: w.content,
+          feedback: w.feedback || '',
+          date: w.created_at ? new Date(w.created_at).toLocaleDateString() : (w.updated_at ? new Date(w.updated_at).toLocaleDateString() : ''),
+          star: w.star || 0,
+          topic_id: w.topic_id
+        });
+      });
+
+      // Add students who haven't written any works yet
+      students.forEach(s => {
+        const hasWork = works.some(w => w.student_email === s.email);
+        if (!hasWork) {
+          submissions.push({
+            id: null,
             name: s.name,
             email: s.email,
-            status: work.status,
-            title: work.title,
-            content: work.content,
-            feedback: work.feedback || '',
-            date: work.created_at ? new Date(work.created_at).toLocaleDateString() : (work.updated_at ? new Date(work.updated_at).toLocaleDateString() : ''),
-            star: work.star || 0,
-            id: work.id
-          };
+            status: '미작성',
+            title: '',
+            content: '',
+            feedback: '',
+            date: '',
+            star: 0,
+            topic_id: topicId
+          });
         }
-        return {
-          name: s.name,
-          email: s.email,
-          status: '미작성',
-          title: '',
-          content: '',
-          feedback: '',
-          date: '',
-          star: 0,
-          id: null
-        };
       });
+
+      // Sort by student name alphabetically
+      submissions.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+      return submissions;
     } catch (e) {
       console.error(e);
       return [];
     }
   },
 
-  async teacherFeedback(studentEmail, topicId, feedback, newStatus, editedContent, star, editedTitle) {
+  async teacherFeedback(workId, studentEmail, topicId, feedback, newStatus, editedContent, star, editedTitle) {
     if (!this.isSupabaseConfigured()) {
       return { success: false, message: 'Supabase가 설정되지 않았습니다.' };
     }
@@ -442,11 +463,13 @@ const DB = {
         payload.title = editedTitle;
       }
 
-      const { error } = await supabase
-        .from('works')
-        .update(payload)
-        .eq('student_email', studentEmail)
-        .eq('topic_id', topicId);
+      let query = supabase.from('works').update(payload);
+      if (workId) {
+        query = query.eq('id', workId);
+      } else {
+        query = query.eq('student_email', studentEmail).eq('topic_id', topicId);
+      }
+      const { error } = await query;
 
       if (error) throw error;
       return { success: true, message: '피드백이 성공적으로 등록되었습니다.' };
@@ -455,14 +478,16 @@ const DB = {
     }
   },
 
-  async saveSpellingLog(studentEmail, topicId, spellLog) {
+  async saveSpellingLog(workId, studentEmail, topicId, spellLog) {
     if (!this.isSupabaseConfigured()) return;
     try {
-      await supabase
-        .from('works')
-        .update({ spelling_log: spellLog })
-        .eq('student_email', studentEmail)
-        .eq('topic_id', topicId);
+      let query = supabase.from('works').update({ spelling_log: spellLog });
+      if (workId) {
+        query = query.eq('id', workId);
+      } else {
+        query = query.eq('student_email', studentEmail).eq('topic_id', topicId);
+      }
+      await query;
     } catch (e) {
       console.error(e);
     }
@@ -620,17 +645,21 @@ function renderTopicsFromCache() {
     return;
   }
 
-  const statusMap = {};
-  works.forEach(w => statusMap[w.topic_id] = w.status);
-
   let html = '';
   topics.forEach((t, i) => {
-    const status = statusMap[t.id] || '미작성';
+    const topicWorks = works.filter(w => w.topic_id === t.id);
+    const count = topicWorks.length;
+    let status = '미작성';
     let badgeClass = 'badge-none';
-    if (status === '임시저장') badgeClass = 'badge-draft';
-    if (status === '제출완료') badgeClass = 'badge-submitted';
-    if (status === '과제완료') badgeClass = 'badge-done';
-    if (status === '수정요청') badgeClass = 'badge-revise';
+
+    if (count > 0) {
+      const latestWork = topicWorks[0]; // Works are pre-sorted by updated_at desc
+      status = `${latestWork.status} (${count}개)`;
+      if (latestWork.status === '임시저장') badgeClass = 'badge-draft';
+      if (latestWork.status === '제출완료') badgeClass = 'badge-submitted';
+      if (latestWork.status === '과제완료') badgeClass = 'badge-done';
+      if (latestWork.status === '수정요청') badgeClass = 'badge-revise';
+    }
 
     html += `
       <div class="spotify-topic-card ${selectedTopicId === t.id ? 'selected' : ''}" onclick="window.selectTopic('${t.id}')">
@@ -692,59 +721,132 @@ function showViewStudent(view) {
   document.getElementById('view-editor').style.display = view === 'editor' ? 'block' : 'none';
 }
 
-async function selectTopic(id) {
+function closeTopicWorksModal() {
+  const modal = document.getElementById('modal-topic-works');
+  if (modal) modal.style.display = 'none';
+}
+
+function createNewWorkForTopic(topicId) {
   const topics = window._cachedTopics || [];
-  const topic = topics.find(t => t.id === id);
-  const title = topic ? topic.title : '';
-  const guide = topic ? topic.guide : '';
+  const topic = topics.find(t => t.id === topicId);
+  if (!topic) return;
 
-  selectedTopicId = id;
-  selectedTopicTitle = title;
-  selectedTopicGuide = guide;
+  selectedTopicId = topicId;
+  selectedTopicTitle = topic.title;
+  selectedTopicGuide = topic.guide;
+  currentWorkId = null;
 
-  document.getElementById('selected-topic-title').textContent = title;
-  document.getElementById('selected-topic-guide').textContent = guide || '자유롭게 서술해주세요.';
-
-  // Update Bottom player bar
-  document.getElementById('np-topic-title').textContent = title;
+  document.getElementById('selected-topic-title').textContent = topic.title;
+  document.getElementById('selected-topic-guide').textContent = topic.guide || '자유롭게 서술해주세요.';
+  document.getElementById('np-topic-title').textContent = topic.title;
   document.getElementById('now-playing-panel').style.display = 'flex';
 
-  // Clear editor state
   document.getElementById('editor-title').value = '';
   document.getElementById('editor-content').innerHTML = '';
-  document.getElementById('editor-status-badge').innerHTML = '';
+  setEditorBadge('미작성');
   document.getElementById('student-feedback-box').style.display = 'none';
 
   closeRefine();
   document.getElementById('spell-panel').classList.remove('open');
 
+  closeTopicWorksModal();
   showViewStudent('editor');
   updateCharCount();
 
-  // Load existing essay draft
-  showLoading(true);
-  try {
-    const works = window._cachedWorks || [];
-    const draft = works.find(w => w.topic_id === id) || null;
-    const topWorks = await DB.getTopWorksByTopic(id);
-
-    showLoading(false);
-    if (draft) {
-      document.getElementById('editor-title').value = draft.title || '';
-      setEditorContent(draft.content || '');
-      updateCharCount();
-      setEditorBadge(draft.status);
-      if (draft.feedback) {
-        document.getElementById('student-feedback-box').style.display = 'block';
-        document.getElementById('student-feedback-text').textContent = draft.feedback;
-      }
-    } else {
-      setEditorBadge('미작성');
-    }
+  DB.getTopWorksByTopic(topicId).then(topWorks => {
     renderTopWorks(topWorks);
-  } catch (e) {
-    showLoading(false);
-    renderTopWorks([]);
+  }).catch(() => renderTopWorks([]));
+}
+
+function startEditingWork(workId) {
+  const works = window._cachedWorks || [];
+  const work = works.find(w => w.id === workId);
+  if (!work) return;
+
+  const topics = window._cachedTopics || [];
+  const topic = topics.find(t => t.id === work.topic_id);
+  if (!topic) return;
+
+  selectedTopicId = work.topic_id;
+  selectedTopicTitle = topic.title;
+  selectedTopicGuide = topic.guide;
+  currentWorkId = work.id;
+
+  document.getElementById('selected-topic-title').textContent = topic.title;
+  document.getElementById('selected-topic-guide').textContent = topic.guide || '자유롭게 서술해주세요.';
+  document.getElementById('np-topic-title').textContent = topic.title;
+  document.getElementById('now-playing-panel').style.display = 'flex';
+
+  document.getElementById('editor-title').value = work.title || '';
+  setEditorContent(work.content || '');
+  updateCharCount();
+  setEditorBadge(work.status);
+
+  if (work.feedback) {
+    document.getElementById('student-feedback-box').style.display = 'block';
+    document.getElementById('student-feedback-text').textContent = work.feedback;
+  } else {
+    document.getElementById('student-feedback-box').style.display = 'none';
+  }
+
+  closeRefine();
+  document.getElementById('spell-panel').classList.remove('open');
+
+  closeTopicWorksModal();
+  showViewStudent('editor');
+
+  DB.getTopWorksByTopic(work.topic_id).then(topWorks => {
+    renderTopWorks(topWorks);
+  }).catch(() => renderTopWorks([]));
+}
+
+async function selectTopic(id) {
+  const topics = window._cachedTopics || [];
+  const topic = topics.find(t => t.id === id);
+  if (!topic) return;
+
+  selectedTopicId = id;
+  selectedTopicTitle = topic.title;
+  selectedTopicGuide = topic.guide;
+
+  const works = window._cachedWorks || [];
+  const topicWorks = works.filter(w => w.topic_id === id);
+
+  if (topicWorks.length === 0) {
+    createNewWorkForTopic(id);
+  } else {
+    // Show topic works choice modal
+    document.getElementById('topic-works-modal-title').textContent = `📌 [${topic.title}] 작성 글 목록`;
+    document.getElementById('topic-works-modal-guide').textContent = `'${topic.title}' 주제로 작성된 글들입니다. 수정할 글을 선택하거나 새 글을 쓰세요.`;
+    
+    const btnCreate = document.getElementById('btn-create-new-work');
+    if (btnCreate) {
+      btnCreate.onclick = () => createNewWorkForTopic(id);
+    }
+
+    const container = document.getElementById('topic-works-list-container');
+    let html = '';
+    topicWorks.forEach(w => {
+      let badgeClass = 'badge-none';
+      if (w.status === '임시저장') badgeClass = 'badge-draft';
+      if (w.status === '제출완료') badgeClass = 'badge-submitted';
+      if (w.status === '과제완료') badgeClass = 'badge-done';
+      if (w.status === '수정요청') badgeClass = 'badge-revise';
+
+      let stars = w.star > 0 ? `<span style="color: var(--color-warning); margin-left: 8px;">${'★'.repeat(w.star)}</span>` : '';
+
+      html += `
+        <div class="work-row" onclick="window.startEditingWork('${w.id}')" style="cursor: pointer; padding: 12px; margin-bottom: 8px; border: 1px solid var(--border-light); border-radius: 6px; display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-interactive);">
+          <div style="text-align: left;">
+            <div style="font-weight: 700; color: var(--text-base);">${escapeHtml(w.title || '(제목 없음)')}</div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">작성일: ${new Date(w.created_at || w.updated_at).toLocaleDateString()} ${stars}</div>
+          </div>
+          <span class="badge ${badgeClass}">${w.status}</span>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+    document.getElementById('modal-topic-works').style.display = 'flex';
   }
 }
 
@@ -830,23 +932,23 @@ function openMyWork(idx) {
 
   const btnWrap = document.getElementById('my-modal-edit-btn-wrap');
   btnWrap.innerHTML = `
-    <button class="btn-spotify" onclick="window.goEditFromModal('${w.topic_id}')">✏️ 수정하러 가기</button>
-    <button class="btn-spotify-danger" style="margin-left: 8px; padding: 14px 28px; border-radius: 500px; font-weight: 700; border: none; font-size: 14px;" onclick="window.deleteMyWork('${w.topic_id}')">🗑️ 삭제하기</button>
+    <button class="btn-spotify" onclick="window.goEditFromModal('${w.id}')">✏️ 수정하러 가기</button>
+    <button class="btn-spotify-danger" style="margin-left: 8px; padding: 14px 28px; border-radius: 500px; font-weight: 700; border: none; font-size: 14px;" onclick="window.deleteMyWork('${w.id}')">🗑️ 삭제하기</button>
   `;
 
   document.getElementById('modal-my-work').style.display = 'flex';
 }
 
-function goEditFromModal(topicId) {
+function goEditFromModal(workId) {
   closeMyModal();
-  selectTopic(topicId);
+  startEditingWork(workId);
 }
 
-async function deleteMyWork(topicId) {
+async function deleteMyWork(workId) {
   if (!confirm('이 글을 정말 삭제하시겠습니까?')) return;
 
   showLoading(true);
-  const res = await DB.deleteStudentWork(currentUserEmail, topicId);
+  const res = await DB.deleteStudentWork(currentUserEmail, workId);
   showLoading(false);
 
   if (res.success) {
@@ -937,7 +1039,10 @@ function scheduleAutoSave() {
     const title = document.getElementById('editor-title').value.trim();
     const content = getEditorText();
     if (title && content && currentRole === 'student' && selectedTopicId) {
-      await DB.saveStudentWork(currentUserEmail, currentUser, selectedTopicId, title, content, '임시저장');
+      const res = await DB.saveStudentWork(currentUserEmail, currentUser, selectedTopicId, title, content, '임시저장', currentWorkId);
+      if (res.success && res.id) {
+        currentWorkId = res.id;
+      }
       document.getElementById('auto-save-time').textContent = '자동 저장 완료';
       document.getElementById('np-auto-save-label').textContent = '자동저장 완료';
     }
@@ -984,10 +1089,11 @@ async function saveDraft() {
   if (!content) { showToast('내용을 입력해주세요!', 'error'); return; }
 
   showLoading(true);
-  const res = await DB.saveStudentWork(currentUserEmail, currentUser, selectedTopicId, title, content, '임시저장');
+  const res = await DB.saveStudentWork(currentUserEmail, currentUser, selectedTopicId, title, content, '임시저장', currentWorkId);
   showLoading(false);
 
   if (res.success) {
+    if (res.id) currentWorkId = res.id;
     showToast('💾 임시저장 되었습니다.', 'success');
     setEditorBadge('임시저장');
   } else {
@@ -1004,10 +1110,11 @@ async function submitWork() {
   if (!confirm('선생님께 글을 제출할까요?')) return;
 
   showLoading(true);
-  const res = await DB.saveStudentWork(currentUserEmail, currentUser, selectedTopicId, title, content, '제출완료');
+  const res = await DB.saveStudentWork(currentUserEmail, currentUser, selectedTopicId, title, content, '제출완료', currentWorkId);
   showLoading(false);
 
   if (res.success) {
+    if (res.id) currentWorkId = res.id;
     showToast('📤 성공적으로 제출되었습니다.', 'success');
     setEditorBadge('제출완료');
   } else {
@@ -1182,7 +1289,7 @@ window.applySpell = function (idx) {
 
   showToast('수정이 본문에 적용되었습니다.', 'success');
 
-  DB.saveSpellingLog(currentUserEmail, selectedTopicId, window._appliedSpells.join(', '));
+  DB.saveSpellingLog(currentWorkId, currentUserEmail, selectedTopicId, window._appliedSpells.join(', '));
 };
 
 async function runRefine() {
@@ -1330,18 +1437,11 @@ window.onTeacherSelectStudent = async function (email) {
   let works = await DB.getStudentWorks(email);
   showLoading(false);
 
-  // Keep only the latest submission per topic
   works.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
-  const latestWorksMap = new Map();
-  works.forEach(w => {
-    if (!latestWorksMap.has(w.topic_id)) {
-      latestWorksMap.set(w.topic_id, w);
-    }
-  });
-  works = Array.from(latestWorksMap.values());
 
   // Store in global/window variable so window.openStudentWork can access it
   window._submissions = works.map(w => ({
+    id: w.id,
     email: w.student_email,
     name: w.student_name,
     title: w.title,
@@ -1586,7 +1686,7 @@ window.sendFeedback = async function (status) {
 
   showLoading(true);
   const topicId = selectedStudentData.topic_id || currentTeacherTopicId;
-  const res = await DB.teacherFeedback(selectedStudentData.email, topicId, feedback, status, content, currentStar, editedTitle);
+  const res = await DB.teacherFeedback(selectedStudentData.id, selectedStudentData.email, topicId, feedback, status, content, currentStar, editedTitle);
   showLoading(false);
 
   closeModal();
@@ -2117,6 +2217,9 @@ window.selectTopic = selectTopic;
 window.openMyWork = openMyWork;
 window.goEditFromModal = goEditFromModal;
 window.deleteMyWork = deleteMyWork;
+window.closeTopicWorksModal = closeTopicWorksModal;
+window.createNewWorkForTopic = createNewWorkForTopic;
+window.startEditingWork = startEditingWork;
 
 // Global Helpers
 function escapeHtml(str) {
