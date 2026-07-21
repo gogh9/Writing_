@@ -67,3 +67,19 @@ INSERT INTO public.topics (id, title, guide, date) VALUES
 ('T001', '내가 가장 좋아하는 계절과 그 이유', '봄, 여름, 가을, 겨울 중 가장 마음에 드는 계절을 하나 고르고, 왜 그렇게 생각하는지 어울리는 자신의 경험이나 추억과 함께 구체적으로 써보세요.', '2026. 6. 10.'),
 ('T002', '나에게 하루 동안 초능력이 생긴다면?', '만약 단 하루 동안 무엇이든 할 수 있는 힘이 생긴다면 어떤 능력을 가지고 싶나요? 그 능력으로 하루를 어떻게 보낼지 자유롭고 창의적으로 서술해 봅시다.', '2026. 6. 17.')
 ON CONFLICT (id) DO NOTHING;
+
+-- 4. Create comments table
+CREATE TABLE IF NOT EXISTS public.comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    work_id UUID REFERENCES public.works(id) ON DELETE CASCADE NOT NULL,
+    author_email TEXT NOT NULL,
+    author_name TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public select on comments" ON public.comments FOR SELECT USING (true);
+CREATE POLICY "Allow authenticated insert comments" ON public.comments FOR INSERT WITH CHECK (auth.jwt() ->> 'email' = author_email);
+CREATE POLICY "Allow authors to delete comments" ON public.comments FOR DELETE USING (auth.jwt() ->> 'email' = author_email);

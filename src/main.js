@@ -531,6 +531,91 @@ const DB = {
       console.error(e);
       return [];
     }
+  },
+
+  async getComments(workId) {
+    if (!this.isSupabaseConfigured()) {
+      const localComments = JSON.parse(localStorage.getItem('student_comments')) || {};
+      return localComments[workId] || [];
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('work_id', workId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  },
+
+  async addComment(workId, authorEmail, authorName, content) {
+    if (!this.isSupabaseConfigured()) {
+      const localComments = JSON.parse(localStorage.getItem('student_comments')) || {};
+      if (!localComments[workId]) localComments[workId] = [];
+      const newComment = {
+        id: 'c-' + Date.now(),
+        work_id: workId,
+        author_email: authorEmail,
+        author_name: authorName,
+        content,
+        created_at: new Date().toISOString()
+      };
+      localComments[workId].push(newComment);
+      localStorage.setItem('student_comments', JSON.stringify(localComments));
+      return { success: true, comment: newComment };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .insert([{
+          work_id: workId,
+          author_email: authorEmail,
+          author_name: authorName,
+          content
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, comment: data };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  },
+
+  async deleteComment(commentId, authorEmail) {
+    if (!this.isSupabaseConfigured()) {
+      const localComments = JSON.parse(localStorage.getItem('student_comments')) || {};
+      for (const workId in localComments) {
+        const filtered = localComments[workId].filter(c => c.id !== commentId);
+        if (filtered.length !== localComments[workId].length) {
+          localComments[workId] = filtered;
+          localStorage.setItem('student_comments', JSON.stringify(localComments));
+          return { success: true };
+        }
+      }
+      return { success: false, message: '댓글을 찾을 수 없습니다.' };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('author_email', authorEmail);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
   }
 };
 
@@ -881,11 +966,109 @@ function openClassmateWork(idx) {
   document.getElementById('classmate-modal-author').textContent = `✍️ 글쓴이: ${w.student_name} 학생`;
   document.getElementById('classmate-modal-content').textContent = w.content || '(내용이 없습니다.)';
 
+  // Clear input
+  const commentInput = document.getElementById('classmate-comment-input');
+  if (commentInput) commentInput.value = '';
+
+  // Setup click binding for submit comment button
+  const submitBtn = document.getElementById('btn-submit-comment');
+  if (submitBtn) {
+    submitBtn.onclick = () => submitComment(w.id);
+  }
+
+  // Load comments
+  loadComments(w.id, 'classmate-modal-comments-list', 'classmate-comments-count', true);
+
   document.getElementById('modal-classmate-work').style.display = 'flex';
 }
 
 function closeClassmateModal() {
   document.getElementById('modal-classmate-work').style.display = 'none';
+}
+
+async function loadComments(workId, containerId, countSpanId = null, enableDelete = false) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const countSpan = countSpanId ? document.getElementById(countSpanId) : null;
+
+  container.innerHTML = '<div style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px 0;">댓글 불러오는 중...</div>';
+
+  try {
+    const comments = await DB.getComments(workId);
+    if (countSpan) countSpan.textContent = comments.length;
+
+    if (comments.length === 0) {
+      container.innerHTML = '<div style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 12px 0;">아직 달린 댓글이 없습니다. 따뜻한 댓글을 첫 번째로 남겨보세요!</div>';
+      return;
+    }
+
+    let html = '';
+    comments.forEach(c => {
+      const isAuthor = currentUserEmail && c.author_email === currentUserEmail;
+      // Show delete button only if current user is the author of this comment
+      const deleteBtn = (enableDelete && isAuthor)
+        ? `<button class="btn-spotify-secondary" style="padding: 2px 8px; font-size: 10px; border-color: var(--color-error); color: var(--color-error); border-radius: 4px;" onclick="window.removeComment('${c.id}', '${workId}', '${containerId}', '${countSpanId}', ${enableDelete})">삭제</button>`
+        : '';
+
+      html += `
+        <div style="padding: 10px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; text-align: left;">
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span style="font-weight: 700; font-size: 12px; color: var(--text-base);">${escapeHtml(c.author_name)}</span>
+              <span style="font-size: 10px; color: var(--text-muted);">${new Date(c.created_at).toLocaleString()}</span>
+            </div>
+            <div style="font-size: 13px; color: var(--text-base); word-break: break-all; white-space: pre-wrap;">${escapeHtml(c.content)}</div>
+          </div>
+          ${deleteBtn}
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<div style="font-size: 12px; color: var(--color-error); text-align: center; padding: 10px 0;">댓글 로드에 실패했습니다.</div>';
+  }
+}
+
+async function submitComment(workId) {
+  const input = document.getElementById('classmate-comment-input');
+  if (!input) return;
+
+  const content = input.value.trim();
+  if (!content) {
+    showToast('댓글 내용을 입력해주세요!', 'error');
+    return;
+  }
+
+  showLoading(true);
+  const authorEmail = currentUserEmail || 'unknown@student.com';
+  const authorName = currentUser || '학생';
+  const res = await DB.addComment(workId, authorEmail, authorName, content);
+  showLoading(false);
+
+  if (res.success) {
+    showToast('💬 댓글이 성공적으로 등록되었습니다.', 'success');
+    input.value = '';
+    loadComments(workId, 'classmate-modal-comments-list', 'classmate-comments-count', true);
+  } else {
+    showToast('댓글 등록 실패: ' + res.message, 'error');
+  }
+}
+
+async function removeComment(commentId, workId, containerId, countSpanId, enableDelete) {
+  if (!confirm('이 댓글을 정말 삭제하시겠습니까?')) return;
+
+  showLoading(true);
+  const authorEmail = currentUserEmail || '';
+  const res = await DB.deleteComment(commentId, authorEmail);
+  showLoading(false);
+
+  if (res.success) {
+    showToast('🗑️ 댓글이 삭제되었습니다.', 'success');
+    loadComments(workId, containerId, countSpanId, enableDelete);
+  } else {
+    showToast('댓글 삭제 실패: ' + res.message, 'error');
+  }
 }
 
 async function selectTopic(id) {
@@ -1017,6 +1200,9 @@ function openMyWork(idx) {
   } else {
     fbBox.style.display = 'none';
   }
+
+  // Load comments (do not show delete button in my-modal unless the logged-in student wrote the comment, but loadComments handles delete check via author_email anyway)
+  loadComments(w.id, 'my-modal-comments-list', null, false);
 
   const btnWrap = document.getElementById('my-modal-edit-btn-wrap');
   btnWrap.innerHTML = `
@@ -2308,6 +2494,9 @@ window.createNewWorkForTopic = createNewWorkForTopic;
 window.startEditingWork = startEditingWork;
 window.openClassmateWork = openClassmateWork;
 window.closeClassmateModal = closeClassmateModal;
+window.loadComments = loadComments;
+window.submitComment = submitComment;
+window.removeComment = removeComment;
 
 // Global Helpers
 function escapeHtml(str) {
