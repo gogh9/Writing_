@@ -1378,6 +1378,20 @@ textarea.form-control {
             </div>
           </div>
         </div>
+
+        <!-- Classmates' Writings Square -->
+        <div class="card" id="classmates-works-container" style="margin-top: 35px; border-top: 1px solid var(--border-light); padding-top: 25px;">
+          <div class="card-header-bar" style="margin-bottom: 12px;">
+            <h3 class="card-title-text" style="display: flex; align-items: center; gap: 8px;">👥 우리 반 친구들의 글 광장</h3>
+          </div>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+            이 주제에 대해 친구들이 제출완료 또는 과제완료 처리한 소중한 글들을 읽어볼 수 있습니다. (임시저장 글은 노출되지 않습니다.)
+          </p>
+          <div class="work-list" id="classmates-works-list">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1682,6 +1696,23 @@ textarea.form-control {
     </div>
     <div class="modal-footer">
       <button class="btn-spotify-secondary" onclick="window.closeTopicWorksModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Classmate Work Detail View Modal -->
+<div id="modal-classmate-work" class="modal-overlay" onclick="if(event.target===this)window.closeClassmateModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="classmate-modal-title">친구의 글</div>
+      <button class="modal-close" onclick="window.closeClassmateModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size: 14px; font-weight: 700; color: var(--spotify-green); margin-bottom: 12px;" id="classmate-modal-author"></div>
+      <div class="ai-box" style="min-height: 150px; max-height: 350px; overflow-y: auto; white-space: pre-wrap; font-size: 15px; line-height: 1.6;" id="classmate-modal-content"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-spotify" onclick="window.closeClassmateModal()">닫기</button>
     </div>
   </div>
 </div>

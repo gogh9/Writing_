@@ -491,6 +491,46 @@ const DB = {
     } catch (e) {
       console.error(e);
     }
+  },
+
+  async getClassmateWorks(topicId, studentEmail) {
+    if (!this.isSupabaseConfigured()) {
+      const db = JSON.parse(localStorage.getItem('student_works')) || {};
+      const list = [];
+      const localName = studentEmail.split('@')[0];
+      for (const name in db) {
+        if (name === localName) continue;
+        db[name].forEach(w => {
+          if (w.topic_id === topicId && (w.status === '제출완료' || w.status === '과제완료')) {
+            list.push({
+              student_name: name,
+              title: w.title,
+              content: w.content,
+              status: w.status,
+              star: w.star || 0,
+              updated_at: w.updated_at || new Date().toISOString()
+            });
+          }
+        });
+      }
+      return list;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('works')
+        .select('*')
+        .eq('topic_id', topicId)
+        .neq('student_email', studentEmail)
+        .in('status', ['제출완료', '과제완료'])
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
   }
 };
 
@@ -756,6 +796,8 @@ function createNewWorkForTopic(topicId) {
   DB.getTopWorksByTopic(topicId).then(topWorks => {
     renderTopWorks(topWorks);
   }).catch(() => renderTopWorks([]));
+
+  loadClassmateWorks(topicId);
 }
 
 function startEditingWork(workId) {
@@ -798,6 +840,52 @@ function startEditingWork(workId) {
   DB.getTopWorksByTopic(work.topic_id).then(topWorks => {
     renderTopWorks(topWorks);
   }).catch(() => renderTopWorks([]));
+
+  loadClassmateWorks(work.topic_id);
+}
+
+async function loadClassmateWorks(topicId) {
+  const container = document.getElementById('classmates-works-list');
+  if (!container) return;
+
+  container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 15px 0;">친구들의 글을 불러오는 중...</div>';
+  const works = await DB.getClassmateWorks(topicId, currentUserEmail);
+  window._classmateWorks = works;
+
+  if (works.length === 0) {
+    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0;">아직 친구들이 제출한 글이 없습니다. 첫 번째로 글을 완성해보세요!</div>';
+    return;
+  }
+
+  let html = '';
+  works.forEach((w, i) => {
+    let stars = w.star > 0 ? `<span style="color: var(--color-warning); margin-left: 8px;">${'★'.repeat(w.star)}</span>` : '';
+    html += `
+      <div class="work-row" onclick="window.openClassmateWork(${i})" style="cursor: pointer; padding: 12px; margin-bottom: 8px; border: 1px solid var(--border-light); border-radius: 6px; display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-interactive); transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--spotify-green)';" onmouseout="this.style.borderColor='var(--border-light)';">
+        <div style="text-align: left;">
+          <div style="font-weight: 700; color: var(--text-base);">${escapeHtml(w.title || '(제목 없음)')}</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">작성자: ${escapeHtml(w.student_name)} | ${new Date(w.updated_at).toLocaleDateString()} ${stars}</div>
+        </div>
+        <span class="badge badge-done" style="font-size: 11px;">읽기 ➔</span>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function openClassmateWork(idx) {
+  const w = window._classmateWorks ? window._classmateWorks[idx] : null;
+  if (!w) return;
+
+  document.getElementById('classmate-modal-title').textContent = w.title || '(제목 없음)';
+  document.getElementById('classmate-modal-author').textContent = `✍️ 글쓴이: ${w.student_name} 학생`;
+  document.getElementById('classmate-modal-content').textContent = w.content || '(내용이 없습니다.)';
+
+  document.getElementById('modal-classmate-work').style.display = 'flex';
+}
+
+function closeClassmateModal() {
+  document.getElementById('modal-classmate-work').style.display = 'none';
 }
 
 async function selectTopic(id) {
@@ -2218,6 +2306,8 @@ window.deleteMyWork = deleteMyWork;
 window.closeTopicWorksModal = closeTopicWorksModal;
 window.createNewWorkForTopic = createNewWorkForTopic;
 window.startEditingWork = startEditingWork;
+window.openClassmateWork = openClassmateWork;
+window.closeClassmateModal = closeClassmateModal;
 
 // Global Helpers
 function escapeHtml(str) {
