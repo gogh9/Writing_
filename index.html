@@ -1639,6 +1639,7 @@ textarea.form-control {
       </div>
     </div>
     <div class="modal-footer">
+      <button class="btn-spotify-danger" id="modal-btn-delete" style="margin-right: auto; padding: 10px 20px;" onclick="window.deleteTeacherStudentWork()">🗑️ 삭제</button>
       <button class="btn-spotify-secondary" id="modal-btn-cancel" onclick="window.closeModal()">취소</button>
       <button class="btn-spotify-secondary" id="modal-btn-revise" style="border-color: var(--color-warning); color: var(--color-warning);" onclick="window.sendFeedback('수정요청')">🔄 수정 요청</button>
       <button class="btn-spotify" id="modal-btn-done" onclick="window.sendFeedback('과제완료')">✅ 완료 처리</button>

@@ -1931,6 +1931,26 @@ window.openStudentWork = function (idx) {
   document.getElementById('modal-student-work').style.display = 'flex';
 };
 
+window.deleteTeacherStudentWork = async function () {
+  if (!selectedStudentData) return;
+  const studentName = selectedStudentData.name || '학생';
+  if (!confirm(`정말로 ${studentName} 학생의 이 글을 삭제하시겠습니까?\n삭제된 글은 복구할 수 없습니다.`)) {
+    return;
+  }
+
+  showLoading(true);
+  const res = await DB.deleteStudentWork(selectedStudentData.email, selectedStudentData.id);
+  showLoading(false);
+
+  closeModal();
+  if (res.success) {
+    showToast('글이 성공적으로 삭제되었습니다.', 'success');
+    reloadSubmissions();
+  } else {
+    showToast(res.message || '글 삭제 실패', 'error');
+  }
+};
+
 function renderStarInput(val) {
   const stars = document.querySelectorAll('#modal-star-input .star-interactive');
   stars.forEach((star, i) => {
