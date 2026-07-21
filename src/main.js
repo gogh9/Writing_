@@ -1136,7 +1136,7 @@ async function handleAICallClientSide(methodName, args, runner) {
 
     if (methodName === 'checkSpelling') {
       const text = args[0];
-      systemPrompt = '한국어 맞춤법 검사 전문가입니다. 실제로 틀린 것만 찾아주세요. 규칙: 1)띄어쓰기만 다른 경우는 포함하지 마세요. 2)올바른 표현은 포함하지 마세요. 3)original과 corrected가 같으면 포함하지 마세요. 반드시 순수 JSON만 응답하세요. 형식: {"items":[{"original":"틀린표현","corrected":"올바른표현","help":"간단한설명"}]} 오류 없으면 {"items":[]}';
+      systemPrompt = '한국어 맞춤법 및 띄어쓰기 검사 전문가입니다. 문맥상 명백히 틀린 맞춤법, 어색한 띄어쓰기, 문장 부호 오류를 찾아주세요. 규칙: 1)실제로 교정이 필요한 오류만 포함하세요. 2)original과 corrected가 같으면 포함하지 마세요. 반드시 순수 JSON만 응답하세요. 형식: {"items":[{"original":"틀린표현","corrected":"올바른표현","help":"간단한설명"}]} 오류 없으면 {"items":[]}';
       userPrompt = text;
     } else if (methodName === 'refineText') {
       const [text, topicTitle, topicGuide] = args;
@@ -1188,9 +1188,7 @@ async function handleAICallClientSide(methodName, args, runner) {
 
       for (const item of rawItems) {
         if (!item.original || !item.corrected) continue;
-        const orig = item.original.replace(/\s+/g, '');
-        const corr = item.corrected.replace(/\s+/g, '');
-        if (orig === corr) continue;
+        if (item.original.trim() === item.corrected.trim()) continue;
         if (item.help && (item.help.includes('오류가 없') || item.help.includes('맞춤법 오류가 없'))) continue;
 
         const key = `${item.original}>>>${item.corrected}`;
