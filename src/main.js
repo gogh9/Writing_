@@ -70,16 +70,18 @@ const DB = {
     if (!this.isSupabaseConfigured()) {
       return JSON.parse(localStorage.getItem('students_list')) || [];
     }
-    const { data, error } = await supabase
-      .from('students')
-      .select('name, email, parent_code')
-      .order('name', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('name, email, parent_code')
+        .order('name', { ascending: true });
 
-    if (error) {
-      console.error(error);
-      return [];
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.error('Supabase getStudentList error, falling back to localStorage:', e);
+      return JSON.parse(localStorage.getItem('students_list')) || [];
     }
-    return data;
   },
 
   async saveStudentList(studentsArray) {
@@ -107,16 +109,18 @@ const DB = {
     if (!this.isSupabaseConfigured()) {
       return JSON.parse(localStorage.getItem('topic_list')) || [];
     }
-    const { data, error } = await supabase
-      .from('topics')
-      .select('*')
-      .order('id', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('topics')
+        .select('*')
+        .order('id', { ascending: true });
 
-    if (error) {
-      console.error(error);
-      return [];
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.error('Supabase getTopicList error, falling back to localStorage:', e);
+      return JSON.parse(localStorage.getItem('topic_list')) || [];
     }
-    return data;
   },
 
   async addTopic(title, guide) {
