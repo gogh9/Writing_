@@ -1400,6 +1400,17 @@ textarea.form-control {
   <div id="page-teacher" class="page">
     <div class="content-wrap">
       
+      <!-- Observer Notice Banner -->
+      <div id="observer-notice-banner" class="box-warning" style="display: none; background: rgba(83, 157, 245, 0.15); border: 1px solid var(--color-info); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 22px;">👁️</span>
+          <div>
+            <div style="color: var(--color-info); font-weight: 700; font-size: 15px;">교사 관찰 계정 모드 (*.senedu.kr)</div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">제출 현황과 학생 글을 자유롭게 관찰할 수 있으나, 쓰기/수정/삭제 권한은 제한됩니다.</div>
+          </div>
+        </div>
+      </div>
+
       <!-- SUB VIEW: TEACHER OVERVIEW -->
       <div id="teacher-tab-overview">
         
@@ -1415,7 +1426,7 @@ textarea.form-control {
               </select>
             </div>
             <div style="display: flex; align-items: center;">
-              <button class="btn-spotify" style="padding: 12px 24px; font-size: 16px; white-space: nowrap; border-radius: 8px; display: flex; align-items: center; justify-content: center;" onclick="window.toggleAddTopicForm()">➕ 주제 추가</button>
+              <button class="btn-spotify" id="btn-add-topic-overview" style="padding: 12px 24px; font-size: 16px; white-space: nowrap; border-radius: 8px; display: flex; align-items: center; justify-content: center;" onclick="window.toggleAddTopicForm()">➕ 주제 추가</button>
             </div>
           </div>
 

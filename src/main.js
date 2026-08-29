@@ -688,11 +688,25 @@ async function handleUserSession(session) {
       renderWorksFromCache();
     }
   } else {
-    // User signed in with Google but is not registered in the students list
-    showToast('우리 반 목록에 등록되지 않은 이메일입니다. 로그아웃합니다.', 'error');
-    setTimeout(() => {
-      supabase.auth.signOut();
-    }, 3000);
+    // Check if email host matches *@senedu.kr format (or *.senedu.kr)
+    const domain = (email.split('@')[1] || '').toLowerCase();
+    const isSeneduObserver = domain === 'senedu.kr' || domain.endsWith('.senedu.kr');
+
+    if (isSeneduObserver) {
+      currentUser = '교사 (관찰용)';
+      currentRole = 'teacher_observer';
+      document.getElementById('header-user').textContent = '👩‍🏫 교사 (관찰 계정)';
+      switchTeacherTab('overview');
+      showPage('teacher');
+      loadTopicsForTeacher();
+      loadStudentsForTeacher();
+      showToast('교사 관찰 계정으로 로그인 되었습니다.', 'info');
+    } else {
+      showToast('우리 반 목록에 등록되지 않은 이메일입니다. 로그아웃합니다.', 'error');
+      setTimeout(() => {
+        supabase.auth.signOut();
+      }, 3000);
+    }
   }
 }
 
@@ -1906,36 +1920,74 @@ window.openStudentWork = function (idx) {
   currentStar = s.star || 0;
   renderStarInput(currentStar);
 
-  // Show/Hide feedback input and buttons based on status
+  const isObserver = currentRole === 'teacher_observer';
+
+  // Readonly toggles for observer role
+  const titleEl = document.getElementById('modal-student-title');
+  const contentEl = document.getElementById('modal-student-content');
+  const feedbackEl = document.getElementById('modal-feedback');
+  const editContentEl = document.getElementById('modal-edit-content');
+
+  if (titleEl) titleEl.contentEditable = isObserver ? "false" : "true";
+  if (contentEl) contentEl.contentEditable = isObserver ? "false" : "true";
+  if (feedbackEl) feedbackEl.readOnly = isObserver;
+  if (editContentEl) editContentEl.readOnly = isObserver;
+
+  // Star rating interactivity toggle
+  const starInputs = document.querySelectorAll('#modal-star-input .star-interactive');
+  starInputs.forEach(star => star.style.pointerEvents = isObserver ? 'none' : 'auto');
+
+  // Show/Hide feedback input and buttons based on status & role
   const isCompleted = s.status === '과제완료';
-  const feedbackGroup = document.getElementById('modal-feedback').closest('.form-group');
+  const feedbackGroup = feedbackEl ? feedbackEl.closest('.form-group') : null;
   const footer = document.querySelector('#modal-student-work .modal-footer');
 
+  const btnDelete = document.getElementById('modal-btn-delete');
   const btnCancel = document.getElementById('modal-btn-cancel');
   const btnRevise = document.getElementById('modal-btn-revise');
   const btnDone = document.getElementById('modal-btn-done');
   const btnSave = document.getElementById('modal-btn-save');
 
-  if (isCompleted) {
-    if (feedbackGroup) feedbackGroup.style.display = 'none';
+  if (isObserver) {
+    if (feedbackGroup) feedbackGroup.style.display = s.feedback ? 'block' : 'none';
     if (footer) footer.style.display = 'flex';
-    if (btnCancel) btnCancel.style.display = 'block';
+    if (btnDelete) btnDelete.style.display = 'none';
     if (btnRevise) btnRevise.style.display = 'none';
     if (btnDone) btnDone.style.display = 'none';
-    if (btnSave) btnSave.style.display = 'block';
-  } else {
-    if (feedbackGroup) feedbackGroup.style.display = 'block';
-    if (footer) footer.style.display = 'flex';
-    if (btnCancel) btnCancel.style.display = 'block';
-    if (btnRevise) btnRevise.style.display = 'block';
-    if (btnDone) btnDone.style.display = 'block';
     if (btnSave) btnSave.style.display = 'none';
+    if (btnCancel) {
+      btnCancel.style.display = 'block';
+      btnCancel.textContent = '닫기';
+    }
+  } else {
+    if (btnDelete) btnDelete.style.display = 'block';
+    if (btnCancel) {
+      btnCancel.style.display = 'block';
+      btnCancel.textContent = '취소';
+    }
+    if (isCompleted) {
+      if (feedbackGroup) feedbackGroup.style.display = 'none';
+      if (footer) footer.style.display = 'flex';
+      if (btnRevise) btnRevise.style.display = 'none';
+      if (btnDone) btnDone.style.display = 'none';
+      if (btnSave) btnSave.style.display = 'block';
+    } else {
+      if (feedbackGroup) feedbackGroup.style.display = 'block';
+      if (footer) footer.style.display = 'flex';
+      if (btnRevise) btnRevise.style.display = 'block';
+      if (btnDone) btnDone.style.display = 'block';
+      if (btnSave) btnSave.style.display = 'none';
+    }
   }
 
   document.getElementById('modal-student-work').style.display = 'flex';
 };
 
 window.deleteTeacherStudentWork = async function () {
+  if (currentRole === 'teacher_observer') {
+    showToast('교사 관찰 계정은 학생 글을 삭제할 수 없습니다.', 'error');
+    return;
+  }
   if (!selectedStudentData) return;
   const studentName = selectedStudentData.name || '학생';
   if (!confirm(`정말로 ${studentName} 학생의 이 글을 삭제하시겠습니까?\n삭제된 글은 복구할 수 없습니다.`)) {
@@ -1972,6 +2024,10 @@ window.closeModal = function () {
 };
 
 window.sendFeedback = async function (status) {
+  if (currentRole === 'teacher_observer') {
+    showToast('교사 관찰 계정은 피드백 작성 및 상태 변경 권한이 없습니다.', 'error');
+    return;
+  }
   if (!selectedStudentData) return;
   const feedback = document.getElementById('modal-feedback').value.trim();
   const editedContent = document.getElementById('modal-student-content').innerText.trim();
@@ -2003,6 +2059,7 @@ async function loadTopicsForManage() {
     return;
   }
 
+  const isObserver = currentRole === 'teacher_observer';
   let html = '';
   topics.forEach((t, i) => {
     html += `
@@ -2012,10 +2069,12 @@ async function loadTopicsForManage() {
           <div style="font-size: 16px; font-weight: 700; margin: 4px 0;">${escapeHtml(t.title)}</div>
           <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; white-space: pre-wrap;">${escapeHtml(t.guide || '')}</div>
         </div>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn-spotify-secondary" style="padding: 6px 14px; font-size: 12px;" onclick="window.editTopicPopup('${t.id}', '${escapeHtml(t.title)}', '${escapeHtml(t.guide || '')}')">수정</button>
-          <button class="btn-spotify-danger" style="padding: 6px 14px; font-size: 12px;" onclick="window.deleteTopic('${t.id}')">삭제</button>
-        </div>
+        ${!isObserver ? `
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-spotify-secondary" style="padding: 6px 14px; font-size: 12px;" onclick="window.editTopicPopup('${t.id}', '${escapeHtml(t.title)}', '${escapeHtml(t.guide || '')}')">수정</button>
+            <button class="btn-spotify-danger" style="padding: 6px 14px; font-size: 12px;" onclick="window.deleteTopic('${t.id}')">삭제</button>
+          </div>
+        ` : ''}
       </div>
     `;
   });
@@ -2023,6 +2082,10 @@ async function loadTopicsForManage() {
 }
 
 window.addTopic = async function () {
+  if (currentRole === 'teacher_observer') {
+    showToast('교사 관찰 계정은 새 주제를 등록할 수 없습니다.', 'error');
+    return;
+  }
   const title = document.getElementById('new-topic-title').value.trim();
   const guide = document.getElementById('new-topic-guide').value.trim();
   if (!title) { showToast('주제 제목을 입력해주세요!', 'error'); return; }
@@ -2043,6 +2106,10 @@ window.addTopic = async function () {
 };
 
 window.toggleAddTopicForm = function () {
+  if (currentRole === 'teacher_observer') {
+    showToast('교사 관찰 계정은 새 주제를 등록할 수 없습니다.', 'error');
+    return;
+  }
   const form = document.getElementById('inline-add-topic-form');
   if (!form) return;
   const visible = form.style.display !== 'none';
@@ -2053,6 +2120,10 @@ window.toggleAddTopicForm = function () {
 };
 
 window.addTopicInline = async function () {
+  if (currentRole === 'teacher_observer') {
+    showToast('교사 관찰 계정은 새 주제를 등록할 수 없습니다.', 'error');
+    return;
+  }
   const title = document.getElementById('inline-topic-title').value.trim();
   const guide = document.getElementById('inline-topic-guide').value.trim();
   if (!title) { showToast('주제 제목을 입력해주세요!', 'error'); return; }
@@ -2074,6 +2145,10 @@ window.addTopicInline = async function () {
 };
 
 window.editTopicPopup = async function (id, title, guide) {
+  if (currentRole === 'teacher_observer') {
+    showToast('교사 관찰 계정은 주제를 수정할 수 없습니다.', 'error');
+    return;
+  }
   const newTitle = prompt('새 주제 제목:', title);
   if (newTitle === null) return;
   const newGuide = prompt('새 주제 설명:', guide);
@@ -2093,6 +2168,10 @@ window.editTopicPopup = async function (id, title, guide) {
 };
 
 window.deleteTopic = async function (id) {
+  if (currentRole === 'teacher_observer') {
+    showToast('교사 관찰 계정은 주제를 삭제할 수 없습니다.', 'error');
+    return;
+  }
   if (!confirm('이 주제를 삭제할까요? (해당 주제의 학생 제출글은 유지되나 매핑이 해제됩니다)')) return;
   showLoading(true);
   const res = await DB.deleteTopic(id);
@@ -2190,12 +2269,20 @@ function loadTeacherSettingsInputs() {
 }
 
 window.saveSettings = function () {
+  if (currentRole === 'teacher_observer') {
+    showToast('교사 관찰 계정은 설정을 변경할 수 없습니다.', 'error');
+    return;
+  }
   const key = document.getElementById('setting-gemini-key').value.trim();
   localStorage.setItem('gemini_api_key', key);
   showToast('Gemini API Key 설정이 저장되었습니다.', 'success');
 };
 
 window.saveStudentsConfig = async function () {
+  if (currentRole === 'teacher_observer') {
+    showToast('교사 관찰 계정은 학생 목록을 업데이트할 수 없습니다.', 'error');
+    return;
+  }
   const lines = document.getElementById('setting-student-list').value.split('\n');
   const studentsArray = [];
 
@@ -2226,6 +2313,10 @@ window.saveStudentsConfig = async function () {
 };
 
 window.saveAuthConfig = function () {
+  if (currentRole === 'teacher_observer') {
+    showToast('교사 관찰 계정은 교사 이메일 설정을 변경할 수 없습니다.', 'error');
+    return;
+  }
   const email = document.getElementById('setting-auth-list').value.trim();
   localStorage.setItem('teacher_email', email);
   showToast('선생님 인증용 이메일이 설정되었습니다.', 'success');
@@ -2281,6 +2372,11 @@ window.exportDataCSV = async function () {
 };
 
 window.importDataJSON = async function (input) {
+  if (currentRole === 'teacher_observer') {
+    showToast('교사 관찰 계정은 데이터를 복구할 수 없습니다.', 'error');
+    input.value = '';
+    return;
+  }
   const file = input.files[0];
   if (!file) return;
 
@@ -2444,6 +2540,15 @@ function showPage(pageId) {
   const isStudent = pageId === 'student';
   document.querySelectorAll('.teacher-nav').forEach(el => el.style.display = isTeacher ? 'block' : 'none');
   document.querySelectorAll('.student-nav').forEach(el => el.style.display = isStudent ? 'block' : 'none');
+
+  // Toggle observer notice banner and write buttons visibility for teacher view
+  const observerBanner = document.getElementById('observer-notice-banner');
+  const addTopicBtn = document.getElementById('btn-add-topic-overview');
+  if (isTeacher) {
+    const isObserver = currentRole === 'teacher_observer';
+    if (observerBanner) observerBanner.style.display = isObserver ? 'flex' : 'none';
+    if (addTopicBtn) addTopicBtn.style.display = isObserver ? 'none' : 'flex';
+  }
 }
 
 function showLoading(show) {
@@ -2481,7 +2586,7 @@ function goToMainLogin() {
 
 function backToMain() {
   if (currentUser) {
-    if (currentRole === 'teacher') {
+    if (currentRole === 'teacher' || currentRole === 'teacher_observer') {
       showPage('teacher');
     } else if (currentRole === 'student') {
       showPage('student');
